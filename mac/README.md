@@ -219,6 +219,6 @@ This software is designed as a monitoring tool and should be part of a broader a
 
 ---
 
-**Version**: 1.0  
+**Version**: 1.1
 **Last Updated**: January 2026  
 **Platform**: macOS (Apple Silicon & Intel)

@@ -2,6 +2,18 @@
 
 A lightweight, AI-powered content monitoring system for macOS that provides real-time screen analysis and automated blocking of inappropriate content.
 
+## Project Description
+
+K9 Web Protection is an intelligent, next-generation content filtering solution that leverages advanced artificial intelligence and machine learning to provide comprehensive digital safety for macOS users. This project represents the continued development and modernization of the discontinued K9 Web Protection software, rebuilt from the ground up with cutting-edge AI technology.
+
+At its core, K9 utilizes a sophisticated hybrid detection architecture combining traditional keyword-based filtering with state-of-the-art computer vision and deep learning models. The system employs Optical Character Recognition (OCR) powered by Tesseract for real-time text extraction, paired with NudeDetector—a convolutional neural network (CNN) trained specifically for image classification and content moderation.
+
+Unlike conventional web filters that rely solely on blocklists and URL filtering, K9's AI-driven approach performs contextual analysis of visual content, distinguishing between benign text references and actual inappropriate imagery. This intelligent verification layer dramatically reduces false positives while maintaining robust protection across all applications system-wide, not just web browsers.
+
+The software implements a two-tier AI decision system: immediate blocking for known threat patterns, and neural network verification for ambiguous content—ensuring both speed and accuracy. Through continuous screen monitoring, natural language processing of on-screen text, and real-time image classification, K9 provides adaptive, intelligent protection that evolves beyond static blocklists.
+
+All AI processing occurs locally on-device, ensuring complete privacy with zero data transmission to external servers. This makes K9 not just a content filter, but a comprehensive AI-powered digital wellness tool designed for the modern macOS ecosystem.
+
 ## Overview
 
 K9 Web Protection is the continued development of the discontinued K9 Web Protection software, reimagined with modern AI capabilities. This tool runs silently in the background, monitoring screen content and automatically closing windows that contain flagged material.

@@ -59,56 +59,60 @@ def monitor():
     print(f"🚀 K10 Turbo Active.")
     print(f"📊 Database: {len(domain_list)} Domains | {len(url_list)} URLs | {len(multi_list)} Multi-Triggers")
 
-    while True:
-        try:
-            # 1. Take memory snapshot
+    try:
+        while True:
             try:
-                screen_mem = pyautogui.screenshot()
-            except Exception as e:
-                # Capture issues (like screen lock) shouldn't kill the app
-                time.sleep(1)
-                continue
-            
-            # 2. OCR with specific handling for the 0x89 binary error
-            try:
-                # config='--psm 6' assumes a single uniform block of text
-                text = pytesseract.image_to_string(screen_mem, config='--psm 6').lower()
-            except (UnicodeDecodeError, Exception):
-                # If Tesseract outputs binary garbage or crashes, skip this frame
-                continue
-
-            # --- HYBRID RULE A: HARD BLOCKS (Domains & URLs) ---
-            found_hard = [kw for kw in (domain_list + url_list) if kw in text]
-            if found_hard:
-                print(f"🚨 HARD BLOCK: Found match in text.")
-                close_active_window()
-                time.sleep(1) # Prevent immediate re-trigger
-                continue
-
-            # --- HYBRID RULE B: MULTI-KEYWORDS (AI Verified) ---
-            found_suspect = [kw for kw in multi_list if kw in text]
-            if found_suspect:
-                screen_mem.save(ai_check_path)
+                # 1. Take memory snapshot
                 try:
-                    detections = detector.detect(ai_check_path)
-                    
-                    # If AI finds explicit labels, close the window
-                    if any(d['class'] in VISUAL_CONFIRMATION_LABELS for d in detections):
-                        print(f"🚨 AI CONFIRMED: Explicit visual content detected.")
-                        close_active_window()
-                        time.sleep(2)
-                except Exception as ai_err:
-                    print(f"⚠️ AI Verification failed: {ai_err}")
-                finally:
-                    if os.path.exists(ai_check_path): 
-                        os.remove(ai_check_path)
+                    screen_mem = pyautogui.screenshot()
+                except Exception as e:
+                    # Capture issues (like screen lock) shouldn't kill the app
+                    time.sleep(1)
+                    continue
+                
+                # 2. OCR with specific handling for the 0x89 binary error
+                try:
+                    # config='--psm 6' assumes a single uniform block of text
+                    text = pytesseract.image_to_string(screen_mem, config='--psm 6').lower()
+                except (UnicodeDecodeError, Exception):
+                    # If Tesseract outputs binary garbage or crashes, skip this frame
+                    continue
 
-            time.sleep(0.7) # CPU-friendly delay
+                # --- HYBRID RULE A: HARD BLOCKS (Domains & URLs) ---
+                found_hard = [kw for kw in (domain_list + url_list) if kw in text]
+                if found_hard:
+                    print(f"🚨 HARD BLOCK: Found match in text.")
+                    close_active_window()
+                    time.sleep(1) # Prevent immediate re-trigger
+                    continue
 
-        except Exception as global_err:
-            # Catch-all to ensure the 'Fortress' never stays down
-            print(f"♻️  System recovered from unexpected error: {global_err}")
-            time.sleep(1)
+                # --- HYBRID RULE B: MULTI-KEYWORDS (AI Verified) ---
+                found_suspect = [kw for kw in multi_list if kw in text]
+                if found_suspect:
+                    screen_mem.save(ai_check_path)
+                    try:
+                        detections = detector.detect(ai_check_path)
+                        
+                        # If AI finds explicit labels, close the window
+                        if any(d['class'] in VISUAL_CONFIRMATION_LABELS for d in detections):
+                            print(f"🚨 AI CONFIRMED: Explicit visual content detected.")
+                            close_active_window()
+                            time.sleep(2)
+                    except Exception as ai_err:
+                        print(f"⚠️ AI Verification failed: {ai_err}")
+                    finally:
+                        if os.path.exists(ai_check_path): 
+                            os.remove(ai_check_path)
+
+                time.sleep(0.7) # CPU-friendly delay
+
+            except Exception as global_err:
+                # Catch-all to ensure the 'Fortress' never stays down
+                print(f"♻️  System recovered from unexpected error: {global_err}")
+                time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("🛑 K10 Turbo Stopped by User.")
 
 if __name__ == "__main__":
     monitor()

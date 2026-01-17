@@ -58,26 +58,11 @@ Clone or download this repository to your desired location.
 
 Create three JSON files in the same directory as the script:
 
-**domains.json** - List of blocked domains
-```json
-{
-  "blocked": ["example.com", "another-site.com"]
-}
-```
+- **domains.json** - Contains blocked domains for hard blocking
+- **urls.json** - Contains blocked URL patterns for hard blocking  
+- **multi-words.json** - Contains suspicious keywords requiring AI verification
 
-**urls.json** - List of blocked URL patterns
-```json
-{
-  "blocked": ["specific-page", "blocked-path"]
-}
-```
-
-**multi-words.json** - Suspicious keyword combinations requiring AI verification
-```json
-{
-  "triggers": ["keyword1", "keyword2", "phrase"]
-}
-```
+Refer to the included sample configuration files or create your own based on your filtering needs.
 
 ## Usage
 

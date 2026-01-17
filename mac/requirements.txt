@@ -1,7 +1,24 @@
+# NumPy - MUST be version 1.x for NudeNet compatibility
+numpy<2.0,>=1.24.0
+
+# AI/ML libraries
 nudenet>=3.4.2
 onnxruntime>=1.17.0
+
+# TensorFlow for macOS (optional, for NudeNet acceleration)
+tensorflow-macos>=2.15.0
+tensorflow-metal>=1.1.0
+
+# Image processing and OCR
 pytesseract>=0.3.13
 Pillow>=10.2.0
+
+# Automation
 pyautogui>=0.9.54
 psutil>=5.9.8
+
+# macOS specific
 pyobjc>=11.0
+
+# Build tool
+pyinstaller>=6.3.0

@@ -49,10 +49,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def monitor():
-    #domain_list = load_keywords("domains.json")
-    #url_list = load_keywords("urls.json")
-    #multi_list = load_keywords("multi-words.json")
-
+    # Load keywords using the resource_path for PyInstaller compatibility
     domain_list = load_keywords(resource_path("domains.json"))
     url_list = load_keywords(resource_path("urls.json"))
     multi_list = load_keywords(resource_path("multi-words.json"))
@@ -62,60 +59,56 @@ def monitor():
     print(f"🚀 K10 Turbo Active.")
     print(f"📊 Database: {len(domain_list)} Domains | {len(url_list)} URLs | {len(multi_list)} Multi-Triggers")
 
-    try:
-        while True:
+    while True:
+        try:
             # 1. Take memory snapshot
             try:
                 screen_mem = pyautogui.screenshot()
-            except:
+            except Exception as e:
+                # Capture issues (like screen lock) shouldn't kill the app
+                time.sleep(1)
                 continue
             
-            # 2. OCR for initial detection
-            text = pytesseract.image_to_string(screen_mem, config='--psm 6').lower()
+            # 2. OCR with specific handling for the 0x89 binary error
+            try:
+                # config='--psm 6' assumes a single uniform block of text
+                text = pytesseract.image_to_string(screen_mem, config='--psm 6').lower()
+            except (UnicodeDecodeError, Exception):
+                # If Tesseract outputs binary garbage or crashes, skip this frame
+                continue
 
-            # --- HYBRID RULE A: HARD BLOCKS ---
+            # --- HYBRID RULE A: HARD BLOCKS (Domains & URLs) ---
             found_hard = [kw for kw in (domain_list + url_list) if kw in text]
             if found_hard:
-                display_name = found_hard[0].split('.')[0]
+                print(f"🚨 HARD BLOCK: Found match in text.")
                 close_active_window()
-                
-                # Verify: Is it a visual webpage or just a text doc?
-                #screen_mem.save(ai_check_path)
-                #detections = detector.detect(ai_check_path)
-                #print(detections)
-                
-                # If AI finds ANY body parts/exposure, confirm it's a site/media
-                #if any(d['class'] in VISUAL_CONFIRMATION_LABELS for d in detections):
-                #    print(f"🚨 BLOCK CONFIRMED: Found '{display_name}' with visual content.")
-                #    close_active_window()
-                #    time.sleep(1.5)
-                #else:
-                    # It found the word, but the screen looks like a plain document
-                #    print(f"ℹ️  Keyword '{display_name}' seen, but AI confirms it's just text. Skipping.")
-                
-                #if os.path.exists(ai_check_path): os.remove(ai_check_path)
-                #continue
+                time.sleep(1) # Prevent immediate re-trigger
+                continue
 
-            # --- HYBRID RULE B: MULTI-KEYWORDS ---
+            # --- HYBRID RULE B: MULTI-KEYWORDS (AI Verified) ---
             found_suspect = [kw for kw in multi_list if kw in text]
             if found_suspect:
-                display_suspect = found_suspect[0].split('.')[0]
-                
                 screen_mem.save(ai_check_path)
-                detections = detector.detect(ai_check_path)
-                
-                # Stricter check for multi-keywords (must be explicit)
-                if any(d['class'] in VISUAL_CONFIRMATION_LABELS[:5] for d in detections):
-                    print(f"🚨 AI CONFIRMED: Explicit content found for '{display_suspect}'.")
-                    close_active_window()
-                    time.sleep(2)
+                try:
+                    detections = detector.detect(ai_check_path)
+                    
+                    # If AI finds explicit labels, close the window
+                    if any(d['class'] in VISUAL_CONFIRMATION_LABELS for d in detections):
+                        print(f"🚨 AI CONFIRMED: Explicit visual content detected.")
+                        close_active_window()
+                        time.sleep(2)
+                except Exception as ai_err:
+                    print(f"⚠️ AI Verification failed: {ai_err}")
+                finally:
+                    if os.path.exists(ai_check_path): 
+                        os.remove(ai_check_path)
 
-                if os.path.exists(ai_check_path): os.remove(ai_check_path)
+            time.sleep(0.7) # CPU-friendly delay
 
-            time.sleep(0.7) 
-
-    except KeyboardInterrupt:
-        print("\n👋 Stopping...")
+        except Exception as global_err:
+            # Catch-all to ensure the 'Fortress' never stays down
+            print(f"♻️  System recovered from unexpected error: {global_err}")
+            time.sleep(1)
 
 if __name__ == "__main__":
     monitor()

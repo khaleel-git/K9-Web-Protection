@@ -1,4 +1,4 @@
-pyinstaller --onefile --noconsole --name "K10Turbo" \
+pyinstaller --onefile --noconsole --name "K9 Web Protection" \
     --icon "Heaven_Icon.icns" \
     --collect-all nudenet \
     --add-data "domains.json:." \
@@ -6,3 +6,5 @@ pyinstaller --onefile --noconsole --name "K10Turbo" \
     --add-data "multi-words.json:." \
     --add-binary "/opt/homebrew/bin/tesseract:." \
     main.py
+
+

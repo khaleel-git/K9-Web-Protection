@@ -2,11 +2,11 @@
 
 A lightweight, AI-powered content monitoring system for macOS that provides real-time screen analysis and automated blocking of inappropriate content.
 
-## Description
+## Project Description
 
-K9 Web Protection is an intelligent, next-generation content filtering solution that leverages advanced artificial intelligence and machine learning to provide comprehensive digital safety for macOS users. This project represents the continued development and modernization of the discontinued K9 Web Protection software, rebuilt from the ground up with cutting-edge AI technology.
+K9 Web Protection is an intelligent, next-generation content filtering solution that leverages advanced artificial intelligence and machine learning to provide comprehensive digital safety for macOS users. This project represents the continued development and modernization of the discontinued K9 Web Protection software, rebuilt from the ground up with AI technology.
 
-At its core, K9 utilizes a sophisticated hybrid detection architecture combining traditional keyword-based filtering with state-of-the-art computer vision and deep learning models. The system employs Optical Character Recognition (OCR) powered by Tesseract for real-time text extraction, paired with NudeDetector—a convolutional neural network (CNN) trained specifically for image classification and content moderation.
+At its core, K9 utilizes a sophisticated hybrid detection architecture combining traditional keyword-based filtering with state-of-the-art computer vision and deep learning models. The system employs Optical Character Recognition (OCR) powered by Tesseract for real-time text extraction, paired with NudeDetector, a convolutional neural network (CNN) trained specifically for image classification and content moderation.
 
 Unlike conventional web filters that rely solely on blocklists and URL filtering, K9's AI-driven approach performs contextual analysis of visual content, distinguishing between benign text references and actual inappropriate imagery. This intelligent verification layer dramatically reduces false positives while maintaining robust protection across all applications system-wide, not just web browsers.
 
@@ -27,7 +27,7 @@ All AI processing occurs locally on-device, ensuring complete privacy with zero 
 ## Requirements
 
 - macOS (tested on Apple Silicon and Intel Macs)
-- Python 3.8 or higher
+- **Python 3.12** (specific version required)
 - Tesseract OCR installed via Homebrew
 
 ## Installation

@@ -1,0 +1,8 @@
+pyinstaller --onefile --noconsole --name "K10Turbo" \
+    --icon "Heaven_Icon.icns" \
+    --collect-all nudenet \
+    --add-data "domains.json:." \
+    --add-data "urls.json:." \
+    --add-data "multi-words.json:." \
+    --add-binary "/opt/homebrew/bin/tesseract:." \
+    main.py

@@ -1,0 +1,7 @@
+nudenet>=3.4.2
+onnxruntime>=1.17.0
+pytesseract>=0.3.13
+Pillow>=10.2.0
+pyautogui>=0.9.54
+psutil>=5.9.8
+pyobjc>=11.0

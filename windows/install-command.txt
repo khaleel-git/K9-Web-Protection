@@ -1,0 +1,1 @@
+pyinstaller --onefile --name "K9 Web Protection" --icon "icon.ico" --collect-all nudenet --add-data "domains.json;." --add-data "urls.json;." --add-data "multi-words.json;." main.py

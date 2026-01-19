@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.k9webprotection</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/K9 Web Protection.app/Contents/MacOS/K9 Web Protection</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>12</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/k9webprotection.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/k9webprotection_error.log</string>
+    <key>AbandonProcessGroup</key>
+    <true/>
+    <key>Nice</key>
+    <integer>-20</integer>
+</dict>
+</plist>

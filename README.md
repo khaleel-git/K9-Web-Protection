@@ -35,9 +35,7 @@ K9-Web-Protection/
     ├── domains.json        # macOS Hard-block database
     ├── urls.json           # macOS URL pattern database
     ├── multi-words.json    # macOS AI-trigger keywords
-    ├── features/           # OS-specific logic modules
     └── README.md           # [macOS Setup Guide]
-
 ```
 
 ---
@@ -54,8 +52,8 @@ Ready to deploy? Download the pre-configured binaries and scripts for your OS fr
 
 For deep-dive installation steps, including how to lock the software into the **Windows Registry** or **macOS LaunchAgents**, see the guides below:
 
-* 📘 **[Windows Persistent Setup](https://www.google.com/search?q=./windows/README.md)** (Registry locking, Watchdog logic, EXE building)
-* 📙 **[macOS Persistent Setup](https://www.google.com/search?q=./mac/README.md)** (Accessibility permissions, LaunchAgents, Homebrew)
+* 📘 **[Windows Persistent Setup](https://github.com/khaleel-git/K9-Web-Protection/tree/master/windows)** (Registry locking, Watchdog logic, EXE building)
+* 📙 **[macOS Persistent Setup](https://github.com/khaleel-git/K9-Web-Protection/tree/master/mac)** (Accessibility permissions, LaunchAgents, Homebrew)
 
 ---
 

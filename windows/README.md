@@ -148,6 +148,39 @@ To have K9 start automatically when Windows boots:
    C:\Users\YourUsername\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
    ```
 
+Windows Registry ke zariye setup karne ka tareeqa sabse zyada secure hai kyunke ye Task Manager ke simple "Startup" tab mein nazar nahi aata aur asani se disable nahi hota.
+
+Aap apne `README.md` mein ye section shamil kar sakte hain:
+
+---
+
+#### **Method 4: Run via Windows Registry (Advanced & Persistent)**
+
+This method ensures the K9 Protection launcher starts automatically for all users upon login and is difficult to disable via standard Task Manager settings.
+
+### **1. Add to Registry**
+
+Open **Command Prompt (CMD)** or **Git Bash** as **Administrator** and run the following command:
+
+```shell
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "K9Protection" /t REG_SZ /d "wscript.exe \"C:\Program Files\K9 Web Protection\k9-launcher.vbs\"" /f
+
+```
+
+### **2. Why Use This Method?**
+
+* **System-Wide Protection**: By using `HKEY_LOCAL_MACHINE`, the protection applies to every user on the computer.
+* **Stealth Execution**: It uses `wscript.exe` to trigger the VBScript launcher, which starts the watchdog `.bat` file in a completely hidden background mode.
+* **Anti-Disable**: Unlike standard startup shortcuts, registry entries under `Local Machine` require Administrator privileges to modify or remove.
+
+### **3. Verification**
+
+To verify that the entry has been successfully added:
+
+1. Press `Win + R`, type `regedit`, and hit Enter.
+2. Navigate to: `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
+3. You should see a string value named **K9Protection** pointing to your `.vbs` launcher.
+
 ### Auto-Restart Feature
 
 The included `k9.bat` file provides automatic restart functionality:

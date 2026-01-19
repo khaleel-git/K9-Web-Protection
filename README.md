@@ -62,12 +62,26 @@ For deep-dive installation steps, including how to lock the software into the **
 
 ## 🛠 Core Stack
 
-| Component | Technology |
-| --- | --- |
-| **Vision** | NudeNet (Convolutional Neural Network) |
-| **OCR** | Tesseract Engine (Real-time text extraction) |
-| **OS Control** | PyAutoGUI & Win32API (Window Termination) |
-| **Persistence** | Windows Registry / macOS LaunchDaemons |
+K9 Web Protection is built using a high-performance, cross-platform architecture. While the AI logic remains consistent, the system utilizes platform-specific bridges to ensure deep OS integration and hardware acceleration.
+
+| Component | Windows Technology | macOS Technology |
+| --- | --- | --- |
+| **AI Vision** | NudeNet (CNN) + ONNX Runtime | NudeNet + **TensorFlow Metal (M-Series GPU)** |
+| **OCR Engine** | Tesseract OCR | Tesseract OCR (Homebrew) |
+| **OS Bridge** | `pywin32` + Win32API | **`pyobjc` (Cocoa/Objective-C Bridge)** |
+| **Automation** | PyAutoGUI | PyAutoGUI + **Accessibility API** |
+| **Persistence** | Windows Registry (`Run` key) | **LaunchAgents** + **LaunchDaemons** |
+| **Process Control** | `psutil` + Batch Watchdog | `psutil` + **Shell Integrity Enforcer** |
+| **File Security** | NTFS Permissions | **`chflags uchg` (System Immutability)** |
+| **Build Tool** | PyInstaller (.exe) | PyInstaller (.app bundle) |
+
+### 📦 Unified Dependency Logic
+
+To maintain a lightweight footprint, the software dynamically adjusts its requirements based on the host environment:
+
+* **Universal Core**: Both platforms require **NumPy (< 2.0)** for NudeNet compatibility and **Pillow** for real-time image processing.
+* **macOS Hardware Acceleration**: On Apple Silicon (M1/M2/M3), K9 utilizes `tensorflow-metal` to run AI inference directly on the GPU, ensuring minimal impact on battery life and CPU performance.
+* **Windows Low-Level Hooks**: Uses `pywin32` to interact directly with the Windows Registry and process manager for a tamper-proof installation.
 
 ---
 

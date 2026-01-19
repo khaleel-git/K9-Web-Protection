@@ -19,23 +19,26 @@ Traditional blockers are easily bypassed by changing browsers or clearing cookie
 
 ```text
 K9-Web-Protection/
-├── lists/                  # Global master lists
-│   ├── Keywords            # Flagged words for AI verification
-│   └── Urls                # Direct domain hard-blocks
-├── windows/                # Windows Source & Persistent Assets
-│   ├── main.py             # Windows Core Engine
-│   ├── k9.bat              # Self-Healing Watchdog script
-│   ├── k9-launcher.vbs     # Stealth Background Launcher
-│   ├── domains.json        # Windows Hard-block database
-│   ├── urls.json           # Windows URL pattern database
-│   ├── multi-words.json    # Windows AI-trigger keywords
-│   └── README.md           # [Windows Setup Guide]
-└── mac/                    # macOS Source & Features
-    ├── k9_protection.py    # macOS Core Engine
-    ├── domains.json        # macOS Hard-block database
-    ├── urls.json           # macOS URL pattern database
-    ├── multi-words.json    # macOS AI-trigger keywords
-    └── README.md           # [macOS Setup Guide]
+├── lists/                          # Global master lists
+│   ├── Keywords/                   # Flagged words for AI verification
+│   └── Urls/                       # Direct domain hard-blocks
+├── windows/                        # Windows Source & Persistent Assets
+│   ├── main.py                     # Windows Core Engine
+│   ├── k9.bat                      # Self-Healing Watchdog script
+│   ├── k9-launcher.vbs             # Stealth Background Launcher
+│   ├── domains.json                # Windows Hard-block database
+│   ├── urls.json                   # Windows URL pattern database
+│   ├── multi-words.json            # Windows AI-trigger keywords
+│   └── README.md                   # [Windows Setup Guide]
+└── mac/                            # macOS Source & Persistent Assets
+    ├── main.py                     # macOS Core Engine
+    ├── k9_watchdog.sh              # Integrity Enforcer script
+    ├── com.k9webprotection.plist   # AI Engine Service
+    ├── com.k9webprotection.watchdog.plist # Watchdog Service
+    ├── domains.json                # macOS Hard-block database
+    ├── urls.json                   # macOS URL pattern database
+    ├── multi-words.json            # macOS AI-trigger keywords
+    └── README.md                   # [macOS Setup Guide]
 ```
 
 ---

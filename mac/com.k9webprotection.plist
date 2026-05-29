@@ -6,7 +6,7 @@
     <string>com.k9webprotection</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Applications/K9 Web Protection.app/Contents/MacOS/K9 Web Protection</string>
+        <string>/Applications/K9 Web Protection.app/Contents/MacOS/K9WebProtection</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

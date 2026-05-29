@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>K9 Web Protection</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Title bar drag region -->
+    <div class="titlebar" style="--wails-draggable:drag"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon">🛡️</span>
+        <div class="brand-name">K9 Web Protection</div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">⊙</span> Dashboard
+        </a>
+        <a class="nav-item" data-page="blocklist">
+          <span class="nav-icon">🚫</span> Block List
+        </a>
+        <a class="nav-item" data-page="allowlist">
+          <span class="nav-icon">✅</span> Allow List
+        </a>
+        <a class="nav-item" data-page="keywords">
+          <span class="nav-icon">🔑</span> Keywords
+        </a>
+        <a class="nav-item" data-page="settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="version">v2.0.0 — Open Source</div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="content">
+      <!-- ── DASHBOARD ──────────────────────────────────────────────── -->
+      <section id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p>Your protection overview</p>
+        </div>
+
+        <div class="status-hero" id="status-hero">
+          <div class="status-icon" id="status-icon">🛡️</div>
+          <div class="status-text" id="status-text">Loading…</div>
+          <div class="status-sub" id="status-sub">Checking protection status</div>
+          <div class="status-actions">
+            <button class="btn btn-danger" id="btn-disable" onclick="disableProtection()" style="display:none">
+              Disable Protection
+            </button>
+            <button class="btn btn-primary" id="btn-enable" onclick="enableProtection()" style="display:none">
+              Enable Protection
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Blocked Today</div>
+            <div class="stat-value" id="stat-today">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Blocked</div>
+            <div class="stat-value" id="stat-total">—</div>
+          </div>
+          <div class="stat-card" id="layer1-card">
+            <div class="stat-label">Layer 1 — Hosts</div>
+            <div class="stat-value" id="stat-layer1">—</div>
+          </div>
+          <div class="stat-card" id="layer2-card">
+            <div class="stat-label">Layer 2 — Proxy</div>
+            <div class="stat-value" id="stat-layer2">—</div>
+          </div>
+        </div>
+
+        <div class="db-banner">
+          <div class="db-banner-icon">🗄️</div>
+          <div>
+            <div class="db-banner-title" id="stat-db">Loading database…</div>
+            <div class="db-banner-sub" id="stat-db-sub">Built-in database active</div>
+          </div>
+        </div>
+
+        <div class="card" id="top-blocked-card" style="display:none">
+          <div class="card-title">Most Blocked Domains</div>
+          <ul class="top-list" id="top-blocked-list"></ul>
+        </div>
+      </section>
+
+      <!-- ── BLOCK LIST ─────────────────────────────────────────────── -->
+      <section id="page-blocklist" class="page">
+        <div class="page-header">
+          <h1>Block List</h1>
+          <p>Domains and websites that are always blocked</p>
+        </div>
+
+        <div class="input-row">
+          <input type="text" id="blocklist-input" class="input" placeholder="Enter domain (e.g. example.com)" />
+          <button class="btn btn-primary" onclick="addToBlocklist()">Add</button>
+        </div>
+
+        <!-- Built-in database badge (read-only) -->
+        <div class="db-info-box">
+          <div class="db-info-icon">🗄️</div>
+          <div class="db-info-text">
+            <div class="db-info-title">Built-in Database <span class="db-badge">Always Active</span></div>
+            <div class="db-info-counts">
+              <span id="db-domains-count">…</span> &nbsp;·&nbsp;
+              <span id="db-urls-count">…</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User additions -->
+        <div class="section-label" id="user-blocklist-label">Your additions (0)</div>
+        <div class="tag-grid" id="blocklist-tags"></div>
+        <div class="empty-state" id="blocklist-user-empty">
+          <div class="empty-icon">➕</div>
+          <div>No custom domains added yet — the built-in database is already protecting you</div>
+        </div>
+      </section>
+
+      <!-- ── ALLOW LIST ─────────────────────────────────────────────── -->
+      <section id="page-allowlist" class="page">
+        <div class="page-header">
+          <h1>Allow List</h1>
+          <p>Sites that are always allowed, even if they match a blocked pattern</p>
+        </div>
+
+        <div class="input-row">
+          <input type="text" id="allowlist-input" class="input" placeholder="Enter domain (e.g. work.example.com)" />
+          <button class="btn btn-primary" onclick="addToAllowlist()">Add</button>
+        </div>
+
+        <div class="tag-grid" id="allowlist-tags"></div>
+        <div class="empty-state" id="allowlist-empty">
+          <div class="empty-icon">✅</div>
+          <div>No sites on the allow list yet</div>
+        </div>
+      </section>
+
+      <!-- ── KEYWORDS ───────────────────────────────────────────────── -->
+      <section id="page-keywords" class="page">
+        <div class="page-header">
+          <h1>Keywords</h1>
+          <p>Block any URL containing these words or phrases</p>
+        </div>
+
+        <div class="input-row">
+          <input type="text" id="keyword-input" class="input" placeholder="Enter keyword or phrase" />
+          <button class="btn btn-primary" onclick="addKeyword()">Add</button>
+        </div>
+
+        <!-- Built-in keywords badge -->
+        <div class="db-info-box">
+          <div class="db-info-icon">🗄️</div>
+          <div class="db-info-text">
+            <div class="db-info-title">Built-in Keywords <span class="db-badge">Always Active</span></div>
+            <div class="db-info-counts" id="db-keywords-count">…</div>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <strong>Note:</strong> Keywords apply to HTTP traffic and URL paths.
+          For full domain blocking use the Block List.
+        </div>
+
+        <!-- User additions -->
+        <div class="section-label" id="user-keywords-label">Your additions (0)</div>
+        <div class="tag-grid" id="keywords-tags"></div>
+        <div class="empty-state" id="keywords-user-empty">
+          <div class="empty-icon">➕</div>
+          <div>No custom keywords added yet</div>
+        </div>
+      </section>
+
+      <!-- ── SETTINGS ───────────────────────────────────────────────── -->
+      <section id="page-settings" class="page">
+        <div class="page-header">
+          <h1>Settings</h1>
+          <p>Configure K9 Web Protection</p>
+        </div>
+
+        <!-- Content Blocking -->
+        <div class="settings-section">
+          <div class="settings-section-header">🌐 Content Blocking</div>
+          <div class="settings-card">
+            <label class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Block adult content</div>
+                <div class="setting-desc">Activates the full built-in domain and keyword database</div>
+              </div>
+              <div class="toggle" id="toggle-adult" onclick="toggleContent('adult')"><div class="toggle-thumb"></div></div>
+            </label>
+            <div class="setting-divider"></div>
+            <label class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Block image &amp; video search</div>
+                <div class="setting-desc">Blocks Google Images, Bing Images and similar</div>
+              </div>
+              <div class="toggle" id="toggle-imgsearch" onclick="toggleContent('imgsearch')"><div class="toggle-thumb"></div></div>
+            </label>
+            <div class="setting-divider"></div>
+            <label class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Block YouTube</div>
+                <div class="setting-desc">Completely blocks youtube.com and related domains</div>
+              </div>
+              <div class="toggle" id="toggle-youtube" onclick="toggleContent('youtube')"><div class="toggle-thumb"></div></div>
+            </label>
+            <div class="setting-divider"></div>
+            <label class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Safe Search</div>
+                <div class="setting-desc">Forces safe search on Google, Bing, and DuckDuckGo via /etc/hosts</div>
+              </div>
+              <div class="toggle" id="toggle-safesearch" onclick="toggleContent('safesearch')"><div class="toggle-thumb"></div></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Uninstall Protection (Password) -->
+        <div class="settings-section">
+          <div class="settings-section-header">🔑 Uninstall Protection</div>
+          <div class="settings-card">
+            <div class="field">
+              <label class="field-label">Current Password</label>
+              <input type="password" id="pw-current" class="input" placeholder="Leave blank if none set" />
+            </div>
+            <div class="field">
+              <label class="field-label">New Password</label>
+              <input type="password" id="pw-new" class="input" placeholder="Leave blank to remove" />
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <label class="field-label">Confirm Password</label>
+              <input type="password" id="pw-confirm" class="input" placeholder="Repeat new password" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="savePassword()">Save Password</button>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="settings-section">
+          <div class="settings-section-header" style="color:var(--red)">⚠️ Danger Zone</div>
+          <div class="settings-card card-danger">
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name" style="color:var(--red)">Uninstall K9</div>
+                <div class="setting-desc">Permanently removes all protection, blocklists, and data</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="showUninstall()">Uninstall…</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ── MODALS ──────────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+
+  <!-- Disable confirmation -->
+  <div class="modal" id="modal-disable">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">Disable Protection?</div>
+    <p class="modal-desc">This will turn off all web filtering. You'll be unprotected.</p>
+    <div id="disable-pw-field" class="field" style="display:none">
+      <label class="field-label">Password required</label>
+      <input type="password" id="disable-pw" class="input" placeholder="Enter password" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDisable()">Disable</button>
+    </div>
+  </div>
+
+  <!-- Uninstall confirmation -->
+  <div class="modal" id="modal-uninstall">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">Uninstall K9 Web Protection?</div>
+    <p class="modal-desc">This will permanently remove all protection, blocklists, and settings from this Mac.</p>
+    <div id="uninstall-pw-field" class="field" style="display:none">
+      <label class="field-label">Password required</label>
+      <input type="password" id="uninstall-pw" class="input" placeholder="Enter password" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmUninstall()">Uninstall</button>
+    </div>
+  </div>
+
+  <!-- Generic password confirmation modal -->
+  <div class="modal" id="modal-auth">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title" id="modal-auth-title">Password Required</div>
+    <p class="modal-desc" id="modal-auth-desc">Enter your password to continue.</p>
+    <div class="field">
+      <label class="field-label">Password</label>
+      <input type="password" id="auth-pw" class="input" placeholder="Enter password"
+             onkeydown="if(event.key==='Enter') confirmAuth()" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelAuth()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAuth()">Confirm</button>
+    </div>
+  </div>
+
+  <!-- Quit confirmation (password required) -->
+  <div class="modal" id="modal-kill">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">Password Required to Quit</div>
+    <p class="modal-desc">K9 is protecting you. Enter your password to close it.</p>
+    <div class="field">
+      <label class="field-label">Password</label>
+      <input type="password" id="kill-pw" class="input" placeholder="Enter password"
+             onkeydown="if(event.key==='Enter') confirmKill()" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Stay Protected</button>
+      <button class="btn btn-danger" onclick="confirmKill()">Quit</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

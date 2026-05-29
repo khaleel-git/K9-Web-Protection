@@ -1,114 +1,246 @@
-# K9 Web Protection for macOS (Persistent AI Blocker)
+# K9 Web Protection — macOS
 
-A high-security, AI-powered porn blocker for macOS. This version implements **Integrity Enforcement** and **Circular Persistence** to ensure the protection is virtually impossible to bypass, uninstall, or terminate.
+A free, open-source parental control and web filtering app for macOS. Built with Go and Wails, it runs silently in the background and protects against adult content, harmful websites, and configurable keyword matches.
 
----
-
-## 🔒 Persistence & Integrity Architecture
-
-The system uses a triple-layered defense mechanism to maintain "Unstoppable" status:
-
-1. **Circular Watchdog**: Two separate LaunchAgents monitor each other. If the AI Engine is killed, the Watchdog restarts it. If the Watchdog is stopped, macOS restarts it.
-2. **Integrity Enforcer (`k9_watchdog.sh`)**: A high-level background script that continuously monitors the binary and the service, re-applying `uchg` (immutable) flags every 10 seconds.
-3. **File Immutability**: System-level locks make core files undeletable even by Admin users.
+**Download:** [k9.khaleel.eu](https://k9.khaleel.eu)
 
 ---
 
-## 🚀 Deployment & Persistence
+## How it works
 
-### 1. The Watchdog Script
+K9 uses two independent layers of protection:
 
-**Path:** `/usr/local/bin/k9_watchdog.sh`
+| Layer | Mechanism | What it blocks |
+|-------|-----------|----------------|
+| **Layer 1** | `/etc/hosts` entries | Domains — works for every app, even offline |
+| **Layer 2** | Local HTTPS proxy (port 8080) | URLs, keywords, adult databases, image search, YouTube |
 
-This script ensures the `uchg` (immutable) flags are active and the service is bootstrapped.
+Both layers activate when you click **Enable Protection** in the app.
+
+---
+
+## Default password
+
+The app ships with a default password so filters are protected from the moment it is installed:
+
+```
+k9.khaleel.eu
+```
+
+Change it in **Settings → Uninstall Protection** after first launch.
+
+---
+
+## Requirements
+
+- macOS 12 Monterey or later
+- Apple Silicon or Intel Mac
+- No additional dependencies — everything is self-contained
+
+---
+
+## Build from source
 
 ```bash
-#!/bin/bash
-# K9 Integrity Enforcer
-BINARY="/Applications/K9 Web Protection.app/Contents/MacOS/K9 Web Protection"
-PLIST="/Library/LaunchAgents/com.k9webprotection.plist"
+# 1. Install Go and Wails
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-while true; do
-    # Re-apply immutable locks if removed
-    if [[ $(ls -lO "$BINARY" | grep -c "uchg") -eq 0 ]]; then
-        sudo chflags uchg "$BINARY"
-    fi
-    if [[ $(ls -lO "$PLIST" | grep -c "uchg") -eq 0 ]]; then
-        sudo chflags uchg "$PLIST"
-    fi
+# 2. Build
+cd mac/app
+wails build
 
-    # Ensure the AI Engine Service is LOADED
-    if ! launchctl list | grep -q "com.k9webprotection"; then
-        launchctl bootstrap gui/$(id -u) "$PLIST" 2>/dev/null
-    fi
-    sleep 10
+# Output: mac/app/build/bin/K9 Web Protection.app
+```
+
+---
+
+## Install
+
+```bash
+cd mac
+sudo bash install.sh
+```
+
+The installer:
+1. Copies `K9 Web Protection.app` to `/Applications`
+2. Installs the watchdog script to `/usr/local/bin/k9_watchdog.sh`
+3. Loads both LaunchAgents (app + watchdog) for the current user
+4. Locks the binary and plists with the `uchg` immutable flag
+
+---
+
+## Installing on an unsigned Mac (no Apple Developer certificate)
+
+This app is not signed with an Apple Developer certificate (costs €99/year). macOS Gatekeeper will block it on first launch. Follow these steps to install it anyway.
+
+### Step 1 — Remove the quarantine flag
+
+After running the installer, strip the quarantine attribute that macOS adds to downloaded files:
+
+```bash
+sudo xattr -cr "/Applications/K9 Web Protection.app"
+```
+
+The installer already does this automatically, but run it manually if you downloaded the DMG directly.
+
+### Step 2 — Allow the app in System Settings
+
+If macOS still blocks the app when you open it:
+
+1. Open **System Settings → Privacy & Security**
+2. Scroll down to the **Security** section
+3. You will see: *"K9WebProtection was blocked because it is not from an identified developer"*
+4. Click **Allow Anyway**
+5. Open the app again — click **Open** in the confirmation dialog
+
+> This only needs to be done once. After approval macOS remembers the choice.
+
+### Step 3 — Verify it is running
+
+After opening the app, confirm both layers are active on the Dashboard:
+- **Layer 1 — Hosts**: Active
+- **Layer 2 — Proxy**: Running
+
+### Troubleshooting Gatekeeper
+
+If System Settings does not show the "Allow Anyway" button, run this once to allow apps from anywhere (re-enables Gatekeeper manually after install):
+
+```bash
+# Temporarily disable Gatekeeper
+sudo spctl --master-disable
+
+# Install and open K9, then re-enable Gatekeeper
+sudo spctl --master-enable
+```
+
+---
+
+## Proxy — known issues & internet recovery
+
+The Layer 2 proxy routes all HTTP/HTTPS traffic through `127.0.0.1:8080`. If the proxy process stops unexpectedly while the system proxy setting is still enabled, **all internet access will fail** with a "connection refused" error.
+
+### Why this can happen
+
+| Scenario | Result |
+|----------|--------|
+| App closes normally | Proxy setting cleared automatically ✓ |
+| App force-killed (`kill -9`) | LaunchAgent restarts app within 12 s ✓ |
+| App deleted from Applications | Proxy stays on, internet breaks ✗ |
+| System crash / hard reboot | On next login app auto-starts and re-syncs ✓ |
+| Port 8080 already in use | Proxy fails to bind, internet breaks ✗ |
+
+### How to fix internet if it breaks
+
+**Option 1 — Open K9 and disable protection:**
+1. Open `K9 Web Protection.app`
+2. Click **Disable Protection** (enter the password)
+3. Internet is restored immediately
+
+**Option 2 — Turn off proxy via System Settings:**
+1. Open **System Settings → Network**
+2. Select your active connection (Wi-Fi or Ethernet)
+3. Click **Details → Proxies**
+4. Uncheck **Web Proxy (HTTP)** and **Secure Web Proxy (HTTPS)**
+5. Click OK
+
+**Option 3 — Fix via Terminal (fastest):**
+
+```bash
+# Turn off proxy for all network services at once
+networksetup -listallnetworkservices | grep -v "An asterisk" | grep -v "^$" | while read svc; do
+  networksetup -setwebproxystate "$svc" off
+  networksetup -setsecurewebproxystate "$svc" off
 done
-
 ```
 
-### 2. The Persistence Services
-
-**Path:** `/Library/LaunchAgents/`
-
-| File | Purpose |
-| --- | --- |
-| **`com.k9webprotection.plist`** | Runs the primary AI Engine binary with high priority (`Nice -20`). |
-| **`com.k9webprotection.watchdog.plist`** | Ensures the Watchdog script is always running. |
-
----
-
-## 🛡️ Activating "Unstoppable" Mode
-
-Once files are in their respective paths, run the following commands to lock the system:
+### Check whether the proxy is actually running
 
 ```bash
-# Apply immutable locks
-sudo chflags uchg "/Applications/K9 Web Protection.app"
-sudo chflags uchg "/Library/LaunchAgents/com.k9webprotection.plist"
-sudo chflags uchg "/Library/LaunchAgents/com.k9webprotection.watchdog.plist"
-sudo chflags uchg "/usr/local/bin/k9_watchdog.sh"
+# Should show a process listening on port 8080
+lsof -i :8080
 
+# Or check via curl — a 403 response means K9 is running and blocking
+curl -x http://127.0.0.1:8080 http://example.com -I --max-time 3
+```
+
+### If port 8080 is already used by another app
+
+Change K9's port in **Settings → (not available in current UI — edit config directly)**:
+
+```bash
+# Edit config and change proxyPort
+nano ~/.k9webprotection/config.json
+# Change "proxyPort": 8080 → "proxyPort": 8181 (or any free port)
+```
+
+Then restart the app.
+
+---
+
+## Uninstall
+
+Use the **Uninstall** button inside the app (**Settings → Danger Zone**). It requires the password and cleanly removes all components.
+
+To manually force-remove:
+
+```bash
+# 1. Unlock files
+sudo chflags -R nouchg "/Applications/K9 Web Protection.app"
+sudo chflags nouchg /Library/LaunchAgents/com.k9webprotection.plist
+sudo chflags nouchg /Library/LaunchAgents/com.k9webprotection.watchdog.plist
+
+# 2. Stop services
+RUID=$(id -u $(logname))
+launchctl bootout gui/$RUID /Library/LaunchAgents/com.k9webprotection.plist
+launchctl bootout gui/$RUID /Library/LaunchAgents/com.k9webprotection.watchdog.plist
+
+# 3. Remove files
+sudo rm -rf "/Applications/K9 Web Protection.app"
+sudo rm -f /Library/LaunchAgents/com.k9webprotection.plist
+sudo rm -f /Library/LaunchAgents/com.k9webprotection.watchdog.plist
+sudo rm -f /usr/local/bin/k9_watchdog.sh
+rm -rf ~/.k9webprotection
+
+# 4. Clear system proxy
+networksetup -listallnetworkservices | grep -v "An asterisk" | grep -v "^$" | while read svc; do
+  networksetup -setwebproxystate "$svc" off
+  networksetup -setsecurewebproxystate "$svc" off
+done
 ```
 
 ---
 
-## 🛠 Maintenance & Removal
+## Project structure
 
-Standard uninstallation will fail. To perform maintenance or updates:
-
-1. **Unlock Files**:
-`sudo chflags nouchg /Applications/K9\ Web\ Protection.app`
-(Repeat for `.plist` and `.sh` files).
-2. **Unload Services**:
-`launchctl bootout gui/$(id -u) /Library/LaunchAgents/com.k9webprotection.watchdog.plist`
-3. **Terminate**:
-`killall -9 "K9 Web Protection"`
-
----
-
-## 📂 Project Structure (Source)
-
-```text
+```
 mac/
-├── main.py                          # Core AI Monitoring Engine
-├── k9_watchdog.sh                   # Installed to /usr/local/bin/
-├── com.k9webprotection.plist        # Installed to /Library/LaunchAgents/
-├── com.k9webprotection.watchdog.plist # Installed to /Library/LaunchAgents/
-├── domains.json                     # Hard-block database
-├── urls.json                        # URL pattern database
-├── multi-words.json                 # AI-trigger keywords
-├── features/                        # Modular detection features
-└── Heaven_Icon.icns                 # App branding icon
-
+├── app/                               # Go + Wails application
+│   ├── main.go                        # App entry point
+│   ├── app.go                         # Business logic & frontend bindings
+│   ├── internal/
+│   │   ├── config/config.go           # Persistent config (JSON)
+│   │   ├── proxy/proxy.go             # Layer 2: HTTPS proxy
+│   │   ├── hosts/hosts.go             # Layer 1: /etc/hosts management
+│   │   └── database/                  # Built-in blocklists
+│   └── frontend/                      # Vite + vanilla JS UI
+├── com.k9webprotection.plist          # LaunchAgent — runs the app
+├── com.k9webprotection.watchdog.plist # LaunchAgent — runs the watchdog
+├── k9_watchdog.sh                     # Watchdog: re-locks files, re-enables proxy
+├── install.sh                         # One-step installer
+└── k9-web-protection-logo.webp        # App icon source
 ```
 
 ---
 
-## ⚠️ Requirements
+## Persistence model
 
-* **Accessibility Permissions**: Must be enabled for `K9 Web Protection` in *System Settings > Privacy & Security*.
-* **Tesseract OCR**: Must be installed via Homebrew (`brew install tesseract`).
+The app is designed to be difficult to bypass:
+
+- **LaunchAgent** (`KeepAlive: Crashed`) restarts the app automatically after force-kills
+- **Watchdog** runs every 10 seconds: re-applies `uchg` locks, re-bootstraps the LaunchAgent if unloaded, re-enables the system proxy if disabled
+- **`uchg` flag** on the binary and plists prevents deletion without root + explicit unlock
+- **Password gate** on all destructive actions (disable, uninstall, change filters)
 
 ---
 
-**Version**: 1.1 | **Updated**: January 2026 | **Platform**: macOS (Apple Silicon & Intel)
+**Version:** 2.0.0 | **Platform:** macOS 12+ (Apple Silicon & Intel) | **License:** Open Source

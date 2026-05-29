@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build outputs
+app/build/bin/
+app/frontend/dist/
+app/frontend/node_modules/
+app/frontend/package.json.md5
+app/frontend/.vite/

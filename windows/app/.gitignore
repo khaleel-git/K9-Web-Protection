@@ -1,0 +1,6 @@
+build/bin/
+frontend/dist/
+frontend/node_modules/
+go.sum
+# keep build/appicon.png and build/windows/ (icon assets)
+

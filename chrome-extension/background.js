@@ -137,23 +137,75 @@ function incrementBlocked(domain) {
   })
 }
 
-// ── Navigation listener — keyword blocking ────────────────────────────────────
-chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
-  if (details.frameId !== 0) return  // main frame only
+// ── Core URL check — runs on every navigation (full load or pushState) ────────
+// Google Images, YouTube, and keywords all use client-side routing (pushState),
+// so declarativeNetRequest alone never fires for them.  We catch both events.
+async function checkUrl(tabId, rawUrl) {
+  if (!rawUrl || rawUrl.startsWith(BLOCKED_URL)) return
 
-  const { enabled, userKeywords } = await chrome.storage.local.get(['enabled', 'userKeywords'])
-  if (!enabled || !userKeywords?.length) return
+  const s = await chrome.storage.local.get([
+    'enabled', 'blockImageSearch', 'blockYouTube', 'userKeywords', 'userAllowlist'
+  ])
+  if (!s.enabled) return
 
-  const url = details.url.toLowerCase()
-  for (const kw of userKeywords) {
-    if (url.includes(kw.toLowerCase())) {
-      // Redirect to blocked page
-      chrome.tabs.update(details.tabId, {
-        url: `${BLOCKED_URL}?url=${encodeURIComponent(details.url)}&reason=keyword`
-      })
+  const url = rawUrl.toLowerCase()
+
+  // Allow-list short-circuit
+  for (const d of (s.userAllowlist || [])) {
+    try {
+      const host = new URL(rawUrl).hostname
+      if (host === d || host.endsWith('.' + d)) return
+    } catch (_) {}
+  }
+
+  const redirect = (reason) => {
+    chrome.tabs.update(tabId, {
+      url: `${BLOCKED_URL}?url=${encodeURIComponent(rawUrl)}&reason=${reason}`
+    })
+  }
+
+  // Image search — catches pushState navigation within Google/Bing
+  if (s.blockImageSearch) {
+    if (
+      (url.includes('google.') && (url.includes('/imghp') || url.includes('tbm=isch'))) ||
+      url.includes('bing.com/images') ||
+      url.includes('images.google.') ||
+      url.includes('duckduckgo.com') && url.includes('iax=images')
+    ) {
+      redirect('imgsearch')
       return
     }
   }
+
+  // YouTube — catches pushState navigation within youtube.com
+  if (s.blockYouTube) {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      redirect('youtube')
+      return
+    }
+  }
+
+  // User keywords
+  for (const kw of (s.userKeywords || [])) {
+    if (kw && url.includes(kw.toLowerCase())) {
+      redirect('keyword')
+      return
+    }
+  }
+}
+
+// ── Navigation listeners ───────────────────────────────────────────────────────
+
+// Full page loads (new tab, address bar, link clicks to different origin)
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  if (details.frameId !== 0) return
+  await checkUrl(details.tabId, details.url)
+})
+
+// SPA / pushState navigation (clicking Images tab on Google, navigating within YouTube)
+chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
+  if (details.frameId !== 0) return
+  await checkUrl(details.tabId, details.url)
 })
 
 // Track blocked redirects for stats

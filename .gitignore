@@ -10,3 +10,4 @@ venv/
 build/
 dist/
 *.spec
+.DS_Store

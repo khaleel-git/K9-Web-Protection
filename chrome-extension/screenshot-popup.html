@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  width:1280px; height:800px; overflow:hidden;
+  background: linear-gradient(135deg, #060e1a 0%, #0d1f35 60%, #0a1628 100%);
+  display:flex; align-items:center; justify-content:center; gap:40px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+
+/* Browser chrome mock */
+.browser {
+  width:380px;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,0.7);
+  border:1px solid rgba(255,255,255,0.08);
+}
+.browser-bar {
+  background:#1e2733;
+  padding:10px 14px;
+  display:flex; align-items:center; gap:8px;
+}
+.dots span {
+  display:inline-block; width:10px; height:10px;
+  border-radius:50%; margin-right:4px;
+}
+.dots .r{background:#ff5f57;} .dots .y{background:#febc2e;} .dots .g{background:#28c840;}
+.url-bar {
+  flex:1; background:#2a3340; border-radius:6px;
+  padding:5px 10px; font-size:11px; color:#8899aa;
+}
+
+/* Popup */
+.popup {
+  background:#0a1628;
+  color:#e8f4ff;
+  font-size:12px;
+}
+.hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 15px 10px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.brand { display:flex; align-items:center; gap:8px; }
+.brand-icon { font-size:20px; }
+.brand-name { font-size:12px; font-weight:700; color:#00d4ff; }
+.brand-sub  { font-size:9px; color:rgba(255,255,255,0.3); }
+.toggle-pill {
+  width:38px; height:21px; background:rgba(0,212,255,0.2);
+  border:1.5px solid #00d4ff; border-radius:12px; position:relative;
+}
+.toggle-pill::after {
+  content:''; position:absolute; right:2px; top:2px;
+  width:15px; height:15px; background:#00d4ff; border-radius:50%;
+}
+.status {
+  background:rgba(0,230,118,0.1); color:#00e676;
+  text-align:center; padding:5px; font-size:10px; font-weight:600;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.stats { display:flex; padding:10px 15px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.stat { flex:1; text-align:center; }
+.stat-v { font-size:18px; font-weight:700; color:#00d4ff; }
+.stat-l { font-size:9px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
+.divider { width:1px; background:rgba(255,255,255,0.08); }
+
+.site-sec { padding:9px 15px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.site-lbl  { font-size:9px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; }
+.site-dom  { font-size:12px; font-weight:600; margin-bottom:7px; }
+.site-btns { display:flex; gap:6px; }
+.btn-b { flex:1; padding:6px; border-radius:6px; font-size:10px; font-weight:600; text-align:center;
+  background:rgba(255,68,68,0.14); color:#ff6b6b; border:1px solid rgba(255,68,68,0.22); }
+.btn-a { flex:1; padding:6px; border-radius:6px; font-size:10px; font-weight:600; text-align:center;
+  background:rgba(0,230,118,0.10); color:#00e676; border:1px solid rgba(0,230,118,0.18); }
+
+.sec-hdr { font-size:9px; font-weight:700; color:rgba(255,255,255,0.3); letter-spacing:.6px;
+  padding:8px 15px 4px; text-transform:uppercase; }
+
+.focus-btn {
+  margin:0 15px 8px; padding:9px 12px; border-radius:9px; display:flex; align-items:center; gap:7px;
+  background:linear-gradient(135deg,rgba(255,107,53,.18),rgba(255,68,68,.12));
+  border:1px solid rgba(255,107,53,.3); color:#ff6b35; font-size:11px; font-weight:700;
+}
+
+.toggle-rows { padding:0 15px 8px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.trow { display:flex; align-items:center; justify-content:space-between;
+  font-size:11px; color:rgba(255,255,255,0.6); padding:4px 0; }
+.mini-t { width:28px; height:16px; background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.08); border-radius:8px; flex-shrink:0; position:relative; }
+.mini-t.on { background:rgba(0,212,255,0.2); border-color:#00d4ff; }
+.mini-t::after { content:''; position:absolute; width:10px; height:10px;
+  top:2px; left:2px; border-radius:50%; background:rgba(255,255,255,0.3); }
+.mini-t.on::after { left:auto; right:2px; background:#00d4ff; }
+
+.sicon { font-size:12px; margin-right:4px; }
+
+.footer { display:flex; justify-content:space-between; padding:8px 15px;
+  font-size:10px; color:rgba(255,255,255,0.25); }
+
+/* Right panel — feature list */
+.features {
+  color:#e8f4ff;
+  max-width:400px;
+}
+.features h2 {
+  font-size:28px; font-weight:800; color:#fff; margin-bottom:6px;
+  line-height:1.2;
+}
+.features h2 span { color:#00d4ff; }
+.features .sub { font-size:14px; color:rgba(255,255,255,0.5); margin-bottom:28px; }
+.feat { display:flex; align-items:flex-start; gap:12px; margin-bottom:16px; }
+.feat-icon { font-size:22px; flex-shrink:0; margin-top:2px; }
+.feat-title { font-size:14px; font-weight:700; color:#fff; margin-bottom:3px; }
+.feat-desc  { font-size:12px; color:rgba(255,255,255,0.5); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- Left: popup in browser chrome -->
+<div class="browser">
+  <div class="browser-bar">
+    <div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+    <div class="url-bar">chrome://extensions — K9 Web Protection</div>
+  </div>
+  <div class="popup">
+    <div class="hdr">
+      <div class="brand">
+        <span class="brand-icon">🛡️</span>
+        <div>
+          <div class="brand-name">K9 Web Protection</div>
+          <div class="brand-sub">Adult Content Blocker</div>
+        </div>
+      </div>
+      <div class="toggle-pill"></div>
+    </div>
+    <div class="status">✓ Protection Active</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-v">12</div><div class="stat-l">Blocked today</div></div>
+      <div class="divider"></div>
+      <div class="stat"><div class="stat-v">847</div><div class="stat-l">Total blocked</div></div>
+    </div>
+    <div class="site-sec">
+      <div class="site-lbl">Current site</div>
+      <div class="site-dom">www.youtube.com</div>
+      <div class="site-btns">
+        <div class="btn-b">🚫 Block</div>
+        <div class="btn-a">✅ Allow</div>
+      </div>
+    </div>
+    <div class="sec-hdr">⏱ FOCUS MODE</div>
+    <div class="focus-btn"><span>⏱</span><span>Focus Mode — Block All Distractions</span></div>
+    <div class="sec-hdr">🌐 CONTENT BLOCKING</div>
+    <div class="toggle-rows">
+      <div class="trow"><span>Block adult content</span><div class="mini-t on"></div></div>
+    </div>
+    <div class="sec-hdr">📱 SOCIAL MEDIA</div>
+    <div class="toggle-rows">
+      <div class="trow"><span><span class="sicon">📘</span>Facebook</span><div class="mini-t on"></div></div>
+      <div class="trow"><span><span class="sicon">📸</span>Instagram</span><div class="mini-t on"></div></div>
+      <div class="trow"><span><span class="sicon">𝕏</span>Twitter / X</span><div class="mini-t"></div></div>
+      <div class="trow"><span><span class="sicon">🤖</span>Reddit</span><div class="mini-t on"></div></div>
+      <div class="trow"><span><span class="sicon">🎵</span>TikTok</span><div class="mini-t on"></div></div>
+      <div class="trow"><span><span class="sicon">▶️</span>YouTube</span><div class="mini-t on"></div></div>
+    </div>
+    <div class="footer">
+      <span>🌐 k9.khaleel.eu</span><span>v2.2</span>
+    </div>
+  </div>
+</div>
+
+<!-- Right: feature highlights -->
+<div class="features">
+  <h2>Stay <span>Focused</span>.<br>Stay <span>Protected</span>.</h2>
+  <div class="sub">Free, open-source content blocker for Chrome</div>
+  <div class="feat">
+    <div class="feat-icon">🛡️</div>
+    <div><div class="feat-title">Adult Content Blocking</div>
+    <div class="feat-desc">70+ porn sites blocked by default. Built-in database, always up to date.</div></div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">📱</div>
+    <div><div class="feat-title">Social Media Blocker</div>
+    <div class="feat-desc">Block Facebook, Instagram, TikTok, Reddit, YouTube and more — individually or all at once.</div></div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">⏱</div>
+    <div><div class="feat-title">Focus Mode</div>
+    <div class="feat-desc">One click blocks all distractions instantly. Perfect for study sessions.</div></div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">🔒</div>
+    <div><div class="feat-title">100% Private</div>
+    <div class="feat-desc">Everything runs locally. No accounts, no tracking, no data sent anywhere.</div></div>
+  </div>
+</div>
+
+</body>
+</html>

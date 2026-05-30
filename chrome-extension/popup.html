@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>K9 Web Protection</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <div>
+        <div class="brand-name">K9 Web Protection</div>
+        <div class="brand-sub">Adult Content Blocker</div>
+      </div>
+    </div>
+    <label class="toggle" title="Enable / Disable protection">
+      <input type="checkbox" id="toggle-enabled" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar" id="status-bar">
+    <span id="status-label">Loading…</span>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value" id="stat-today">—</div>
+      <div class="stat-label">Blocked today</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-label">Total blocked</div>
+    </div>
+  </div>
+
+  <!-- Current site -->
+  <div class="site-section">
+    <div class="site-label">Current site</div>
+    <div class="site-domain" id="current-domain">—</div>
+    <div class="site-actions">
+      <button class="btn btn-block"  id="btn-block"  onclick="blockCurrent()">🚫 Block</button>
+      <button class="btn btn-allow"  id="btn-allow"  onclick="allowCurrent()">✅ Allow</button>
+    </div>
+  </div>
+
+  <!-- Content toggles -->
+  <div class="toggles-section">
+    <div class="toggle-row">
+      <span>Block adult content</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-adult" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span>Block image search</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-images" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span>Block YouTube</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-youtube" />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-actions">
+    <button class="btn-text" id="btn-settings" onclick="openOptions()">⚙️ Settings</button>
+    <a class="btn-text" href="https://k9.khaleel.eu" target="_blank">🌐 k9.khaleel.eu</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blocked — K9 Web Protection</title>
+  <link rel="stylesheet" href="blocked.css" />
+</head>
+<body>
+  <div class="card">
+    <div class="shield">🛡️</div>
+    <h1>Site Blocked</h1>
+    <p id="message">This website has been blocked by K9 Web Protection.</p>
+    <div class="domain" id="domain"></div>
+    <div class="actions">
+      <button class="btn btn-back" onclick="history.back()">← Go Back</button>
+      <button class="btn btn-allow" onclick="allowSite()">Allow this site</button>
+    </div>
+    <div class="footer">
+      🛡️ K9 Web Protection &nbsp;·&nbsp; <a href="https://k9.khaleel.eu" target="_blank">k9.khaleel.eu</a>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search)
+    const blockedURL = params.get('url') || ''
+
+    if (blockedURL) {
+      try {
+        const host = new URL(blockedURL).hostname
+        document.getElementById('domain').textContent = host
+      } catch (_) {}
+    }
+
+    function allowSite() {
+      if (!blockedURL) return
+      try {
+        const host = new URL(blockedURL).hostname
+        chrome.storage.local.get('userAllowlist', ({ userAllowlist = [] }) => {
+          if (!userAllowlist.includes(host)) {
+            userAllowlist.push(host)
+            chrome.runtime.sendMessage({
+              type: 'SAVE_SETTINGS',
+              settings: { userAllowlist }
+            }, () => {
+              window.location.href = blockedURL
+            })
+          }
+        })
+      } catch (_) {}
+    }
+  </script>
+</body>
+</html>

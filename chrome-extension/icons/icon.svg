@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#0f1b2d"/>
+      <stop offset="100%" stop-color="#1a3a5c"/>
+    </linearGradient>
+    <linearGradient id="shield-g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#0099cc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="64" fill="url(#bg)"/>
+
+  <!-- Shield -->
+  <path d="M64 18 L96 32 L96 62 C96 82 80 96 64 108 C48 96 32 82 32 62 L32 32 Z"
+        fill="url(#shield-g)" opacity="0.15"/>
+  <path d="M64 22 L93 35 L93 63 C93 81 78 94 64 105 C50 94 35 81 35 63 L35 35 Z"
+        fill="none" stroke="url(#shield-g)" stroke-width="3"/>
+
+  <!-- K9 text -->
+  <text x="64" y="74" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif"
+        font-size="28" font-weight="700" fill="#00d4ff"
+        text-anchor="middle" letter-spacing="1">K9</text>
+</svg>

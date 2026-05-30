@@ -15,6 +15,9 @@ const SOCIAL_SITES = {
   linkedin:  ['linkedin.com'],
 }
 
+// Flat list of all social domains — pre-computed once, used in onCommitted
+const SOCIAL_FLAT = Object.values(SOCIAL_SITES).flat()
+
 // ── Defaults ──────────────────────────────────────────────────────────────────
 const DEFAULTS = {
   enabled:           true,
@@ -251,12 +254,11 @@ chrome.webNavigation.onCommitted.addListener((d) => {
 
   tabUrlCache.delete(d.tabId)
 
-  // Determine reason from domain
-  const SOCIAL_FLAT = Object.values(SOCIAL_SITES).flat()
+  // Determine reason from domain (SOCIAL_FLAT is pre-computed at module level)
   let reason = 'adult'
   try {
     const host = new URL(originalUrl).hostname.toLowerCase()
-    if (SOCIAL_FLAT.some(d => host === d || host.endsWith('.' + d))) reason = 'social'
+    if (SOCIAL_FLAT.some(domain => host === domain || host.endsWith('.' + domain))) reason = 'social'
   } catch (_) {}
 
   chrome.tabs.update(d.tabId, {

@@ -22,7 +22,6 @@ const SOCIAL_FLAT = Object.values(SOCIAL_SITES).flat()
 const DEFAULTS = {
   enabled:           true,
   blockAdultContent: true,
-  blockImageSearch:  false,
   blockYouTube:      false,
   focusMode:         false,
   blockSocial: {
@@ -124,15 +123,6 @@ async function syncDynamicRules(s) {
       for (const d of domains) push(`||${d}`)
     }
 
-    // Image search — toggle or focus mode
-    if (s.focusMode || s.blockImageSearch) {
-      push('google.com/imghp')
-      push('google.com/search?*tbm=isch')
-      push('bing.com/images')
-      push('images.google.')
-      push('duckduckgo.com/*iax=images')
-    }
-
     // blockYouTube content toggle (when not already covered by social/focus)
     if (s.blockYouTube && !blockSocial.youtube && !s.focusMode) {
       for (const d of SOCIAL_SITES.youtube) push(`||${d}`)
@@ -168,7 +158,7 @@ async function checkUrl(tabId, rawUrl) {
   if (!rawUrl || rawUrl.startsWith(BLOCKED_URL)) return
 
   const s = await chrome.storage.local.get([
-    'enabled', 'blockImageSearch', 'blockYouTube', 'blockSocial',
+    'enabled', 'blockYouTube', 'blockSocial',
     'focusMode', 'userKeywords', 'userAllowlist',
   ])
   if (!s.enabled) return
@@ -197,16 +187,6 @@ async function checkUrl(tabId, rawUrl) {
     for (const d of domains) {
       if (host === d || host.endsWith('.' + d)) { redirect('social'); return }
     }
-  }
-
-  // Image search (pushState)
-  if (s.blockImageSearch || s.focusMode) {
-    if (
-      (url.includes('google.') && (url.includes('/imghp') || url.includes('tbm=isch'))) ||
-      url.includes('bing.com/images') ||
-      url.includes('images.google.') ||
-      (url.includes('duckduckgo.com') && url.includes('iax=images'))
-    ) { redirect('imgsearch'); return }
   }
 
   // User keywords

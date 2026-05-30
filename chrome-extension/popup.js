@@ -48,7 +48,6 @@ async function load() {
   el('stat-total').textContent = (stats.totalBlocked  || 0).toLocaleString()
 
   el('toggle-adult').checked  = settings.blockAdultContent !== false
-  el('toggle-images').checked = settings.blockImageSearch  === true
 
   for (const key of SOCIAL_KEYS) {
     const id    = `toggle-${key === 'youtube' ? 'youtube-social' : key}`
@@ -94,7 +93,7 @@ function updateFocusBtn(active) {
     : 'Focus Mode — Block All Distractions'
   desc.textContent = active
     ? 'All social media and distractions are blocked.'
-    : 'Instantly blocks social media, image search, and adult content.'
+    : 'Instantly blocks social media and adult content.'
 }
 
 async function toggleFocusMode() {
@@ -136,8 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     save({ enabled: on })
   })
 
-  el('toggle-adult').addEventListener('change',  e => save({ blockAdultContent: e.target.checked }))
-  el('toggle-images').addEventListener('change', e => save({ blockImageSearch:  e.target.checked }))
+  el('toggle-adult').addEventListener('change', e => save({ blockAdultContent: e.target.checked }))
 
   document.querySelectorAll('[data-social]').forEach(input => {
     input.addEventListener('change', (e) => {

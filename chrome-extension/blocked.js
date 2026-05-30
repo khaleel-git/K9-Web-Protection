@@ -56,10 +56,6 @@ if (reason === 'social') {
   const q = el('quote')
   q.textContent   = '"' + QUOTES[Math.floor(Math.random() * QUOTES.length)] + '"'
   q.style.display = 'block'
-} else if (reason === 'imgsearch') {
-  el('icon').textContent    = '🔍'
-  el('title').textContent   = 'Image Search Blocked'
-  el('message').textContent = 'Image and video search is blocked by K9 Web Protection.'
 } else if (reason === 'keyword') {
   el('icon').textContent    = '🔑'
   el('title').textContent   = 'Keyword Blocked'

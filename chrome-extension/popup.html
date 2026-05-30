@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
+
   <!-- Header -->
   <div class="header">
     <div class="brand">
@@ -15,13 +16,13 @@
         <div class="brand-sub">Adult Content Blocker</div>
       </div>
     </div>
-    <label class="toggle" title="Enable / Disable protection">
+    <label class="toggle" title="Enable / Disable">
       <input type="checkbox" id="toggle-enabled" />
       <span class="slider"></span>
     </label>
   </div>
 
-  <!-- Status bar -->
+  <!-- Status -->
   <div class="status-bar" id="status-bar">
     <span id="status-label">Loading…</span>
   </div>
@@ -44,12 +45,25 @@
     <div class="site-label">Current site</div>
     <div class="site-domain" id="current-domain">—</div>
     <div class="site-actions">
-      <button class="btn btn-block"  id="btn-block"  onclick="blockCurrent()">🚫 Block</button>
-      <button class="btn btn-allow"  id="btn-allow"  onclick="allowCurrent()">✅ Allow</button>
+      <button class="btn btn-block" id="btn-block" onclick="blockCurrent()">🚫 Block</button>
+      <button class="btn btn-allow" id="btn-allow" onclick="allowCurrent()">✅ Allow</button>
     </div>
   </div>
 
-  <!-- Content toggles -->
+  <!-- ── FOCUS MODE ──────────────────────────────────────────────────────── -->
+  <div class="section-hdr">⏱ FOCUS MODE</div>
+  <div class="focus-section">
+    <button class="focus-btn" id="focus-btn" onclick="toggleFocusMode()">
+      <span id="focus-icon">⏱</span>
+      <span id="focus-label">Focus Mode — Block All Distractions</span>
+    </button>
+    <div class="focus-desc" id="focus-desc">
+      Instantly blocks social media, image search, and adult content.
+    </div>
+  </div>
+
+  <!-- ── CONTENT BLOCKING ───────────────────────────────────────────────── -->
+  <div class="section-hdr">🌐 CONTENT BLOCKING</div>
   <div class="toggles-section">
     <div class="toggle-row">
       <span>Block adult content</span>
@@ -59,16 +73,77 @@
       </label>
     </div>
     <div class="toggle-row">
-      <span>Block image search</span>
+      <span>Block image &amp; video search</span>
       <label class="mini-toggle">
         <input type="checkbox" id="toggle-images" />
         <span class="slider"></span>
       </label>
     </div>
+  </div>
+
+  <!-- ── SOCIAL MEDIA ───────────────────────────────────────────────────── -->
+  <div class="section-hdr">📱 SOCIAL MEDIA</div>
+  <div class="toggles-section">
     <div class="toggle-row">
-      <span>Block YouTube</span>
+      <span><span class="site-icon">📘</span> Facebook</span>
       <label class="mini-toggle">
-        <input type="checkbox" id="toggle-youtube" />
+        <input type="checkbox" id="toggle-facebook" data-social="facebook" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">📸</span> Instagram</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-instagram" data-social="instagram" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">𝕏</span> Twitter / X</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-twitter" data-social="twitter" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">🤖</span> Reddit</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-reddit" data-social="reddit" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">🎵</span> TikTok</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-tiktok" data-social="tiktok" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">▶️</span> YouTube</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-youtube-social" data-social="youtube" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">👻</span> Snapchat</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-snapchat" data-social="snapchat" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">📌</span> Pinterest</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-pinterest" data-social="pinterest" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span><span class="site-icon">💼</span> LinkedIn</span>
+      <label class="mini-toggle">
+        <input type="checkbox" id="toggle-linkedin" data-social="linkedin" />
         <span class="slider"></span>
       </label>
     </div>
@@ -76,7 +151,7 @@
 
   <!-- Footer -->
   <div class="footer-actions">
-    <button class="btn-text" id="btn-settings" onclick="openOptions()">⚙️ Settings</button>
+    <button class="btn-text" onclick="openOptions()">⚙️ Settings</button>
     <a class="btn-text" href="https://k9.khaleel.eu" target="_blank">🌐 k9.khaleel.eu</a>
   </div>
 

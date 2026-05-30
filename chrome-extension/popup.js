@@ -1,117 +1,148 @@
 // K9 Web Protection — Popup
 
-let settings  = {}
+const SOCIAL_KEYS = ['facebook','instagram','twitter','reddit','tiktok','youtube','snapchat','pinterest','linkedin']
+
+let settings      = {}
 let currentDomain = ''
 
-// ── Load ──────────────────────────────────────────────────────────────────────
+// ── Load all settings ─────────────────────────────────────────────────────────
 async function load() {
-  settings = await new Promise(resolve =>
-    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, resolve)
-  )
-  const { stats = {} } = settings
+  settings = await ask('GET_SETTINGS')
+  const { stats = {}, blockSocial = {}, focusMode } = settings
 
   // Master toggle
-  document.getElementById('toggle-enabled').checked = settings.enabled !== false
-  updateStatusBar(settings.enabled !== false)
+  el('toggle-enabled').checked = settings.enabled !== false
+  updateStatusBar(settings.enabled !== false, focusMode)
 
   // Stats
-  document.getElementById('stat-today').textContent = (stats.blockedToday || 0).toLocaleString()
-  document.getElementById('stat-total').textContent = (stats.totalBlocked  || 0).toLocaleString()
+  el('stat-today').textContent = (stats.blockedToday || 0).toLocaleString()
+  el('stat-total').textContent = (stats.totalBlocked  || 0).toLocaleString()
 
   // Content toggles
-  document.getElementById('toggle-adult').checked   = settings.blockAdultContent !== false
-  document.getElementById('toggle-images').checked  = settings.blockImageSearch  === true
-  document.getElementById('toggle-youtube').checked = settings.blockYouTube      === true
+  el('toggle-adult').checked  = settings.blockAdultContent !== false
+  el('toggle-images').checked = settings.blockImageSearch  === true
 
-  // Current tab domain
+  // Social media toggles
+  for (const key of SOCIAL_KEYS) {
+    const input = el(`toggle-${key === 'youtube' ? 'youtube-social' : key}`)
+    if (input) input.checked = blockSocial[key] === true
+  }
+
+  // Focus mode button
+  updateFocusBtn(focusMode)
+
+  // Current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   if (tab?.url) {
     try {
       currentDomain = new URL(tab.url).hostname
-      document.getElementById('current-domain').textContent = currentDomain
-
-      const blocked  = (settings.userBlocklist  || []).includes(currentDomain)
-      const allowed  = (settings.userAllowlist || []).includes(currentDomain)
-      document.getElementById('btn-block').classList.toggle('active', blocked)
-      document.getElementById('btn-allow').classList.toggle('active', allowed)
+      el('current-domain').textContent = currentDomain
+      el('btn-block').classList.toggle('active', (settings.userBlocklist || []).includes(currentDomain))
+      el('btn-allow').classList.toggle('active', (settings.userAllowlist || []).includes(currentDomain))
     } catch (_) {
-      document.getElementById('current-domain').textContent = 'Not a webpage'
+      el('current-domain').textContent = 'Not a webpage'
     }
   }
 }
 
 // ── Status bar ────────────────────────────────────────────────────────────────
-function updateStatusBar(on) {
-  const bar = document.getElementById('status-bar')
-  const lbl = document.getElementById('status-label')
-  if (on) {
-    bar.classList.remove('off')
-    lbl.textContent = '✓ Protection Active'
-  } else {
-    bar.classList.add('off')
-    lbl.textContent = '⚠ Protection Disabled'
-  }
+function updateStatusBar(on, focus) {
+  const bar = el('status-bar')
+  const lbl = el('status-label')
+  bar.className = 'status-bar'
+  if (!on)    { bar.classList.add('off');   lbl.textContent = '⚠ Protection Disabled'; return }
+  if (focus)  { bar.classList.add('focus'); lbl.textContent = '⏱ Focus Mode Active';   return }
+  lbl.textContent = '✓ Protection Active'
 }
 
-// ── Save settings ─────────────────────────────────────────────────────────────
-async function save(patch) {
-  const merged = { ...settings, ...patch }
-  settings = merged
-  await new Promise(resolve =>
-    chrome.runtime.sendMessage({ type: 'SAVE_SETTINGS', settings: merged }, resolve)
-  )
+// ── Focus Mode ────────────────────────────────────────────────────────────────
+function updateFocusBtn(active) {
+  const btn  = el('focus-btn')
+  const icon = el('focus-icon')
+  const lbl  = el('focus-label')
+  const desc = el('focus-desc')
+
+  btn.classList.toggle('active', active)
+  icon.textContent = active ? '🔴' : '⏱'
+  lbl.textContent  = active
+    ? 'Focus Mode Active — Click to disable'
+    : 'Focus Mode — Block All Distractions'
+  desc.textContent = active
+    ? 'All social media and distractions are blocked.'
+    : 'Instantly blocks social media, image search, and adult content.'
+
+  // Dim individual social toggles while focus mode is on (they're all overridden)
+  document.querySelectorAll('.toggle-row[data-group="social"]')
+    .forEach(row => row.classList.toggle('focus-active', active))
 }
+
+async function toggleFocusMode() {
+  const newState = !settings.focusMode
+  await save({ focusMode: newState })
+  settings.focusMode = newState
+  updateFocusBtn(newState)
+  updateStatusBar(settings.enabled !== false, newState)
+}
+window.toggleFocusMode = toggleFocusMode
 
 // ── Master toggle ─────────────────────────────────────────────────────────────
-document.getElementById('toggle-enabled').addEventListener('change', e => {
+el('toggle-enabled').addEventListener('change', async (e) => {
   const on = e.target.checked
-  updateStatusBar(on)
-  save({ enabled: on })
+  updateStatusBar(on, settings.focusMode)
+  await save({ enabled: on })
 })
 
 // ── Content toggles ───────────────────────────────────────────────────────────
-document.getElementById('toggle-adult').addEventListener('change', e => {
-  save({ blockAdultContent: e.target.checked })
-})
-document.getElementById('toggle-images').addEventListener('change', e => {
-  save({ blockImageSearch: e.target.checked })
-})
-document.getElementById('toggle-youtube').addEventListener('change', e => {
-  save({ blockYouTube: e.target.checked })
+el('toggle-adult').addEventListener('change', e => save({ blockAdultContent: e.target.checked }))
+el('toggle-images').addEventListener('change', e => save({ blockImageSearch: e.target.checked }))
+
+// ── Social media toggles ──────────────────────────────────────────────────────
+document.querySelectorAll('[data-social]').forEach(input => {
+  input.addEventListener('change', async (e) => {
+    const key = e.target.dataset.social
+    const blockSocial = { ...(settings.blockSocial || {}), [key]: e.target.checked }
+    settings.blockSocial = blockSocial
+    await save({ blockSocial })
+  })
 })
 
 // ── Block / Allow current site ────────────────────────────────────────────────
 function blockCurrent() {
-  if (!currentDomain) return
-  const btn = document.getElementById('btn-block')
-  if (btn.classList.contains('active')) return  // already blocked
-
-  const userBlocklist = [...(settings.userBlocklist || [])]
+  if (!currentDomain || el('btn-block').classList.contains('active')) return
+  const userBlocklist = [...(settings.userBlocklist || []), currentDomain]
   const userAllowlist = (settings.userAllowlist || []).filter(d => d !== currentDomain)
-  if (!userBlocklist.includes(currentDomain)) userBlocklist.push(currentDomain)
-
-  btn.classList.add('active')
-  document.getElementById('btn-allow').classList.remove('active')
+  el('btn-block').classList.add('active')
+  el('btn-allow').classList.remove('active')
   save({ userBlocklist, userAllowlist })
 }
-
 function allowCurrent() {
-  if (!currentDomain) return
-  const btn = document.getElementById('btn-allow')
-  if (btn.classList.contains('active')) return  // already allowed
-
-  const userAllowlist = [...(settings.userAllowlist || [])]
+  if (!currentDomain || el('btn-allow').classList.contains('active')) return
+  const userAllowlist = [...(settings.userAllowlist || []), currentDomain]
   const userBlocklist = (settings.userBlocklist || []).filter(d => d !== currentDomain)
-  if (!userAllowlist.includes(currentDomain)) userAllowlist.push(currentDomain)
-
-  btn.classList.add('active')
-  document.getElementById('btn-block').classList.remove('active')
+  el('btn-allow').classList.add('active')
+  el('btn-block').classList.remove('active')
   save({ userAllowlist, userBlocklist })
 }
+window.blockCurrent = blockCurrent
+window.allowCurrent = allowCurrent
 
-function openOptions() {
-  chrome.runtime.openOptionsPage?.()
+function openOptions() { chrome.runtime.openOptionsPage?.() }
+window.openOptions = openOptions
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+async function save(patch) {
+  const merged = { ...settings, ...patch }
+  settings = merged
+  await ask('SAVE_SETTINGS', merged)
 }
+
+function ask(type, data) {
+  return new Promise(resolve =>
+    chrome.runtime.sendMessage({ type, settings: data }, resolve)
+  )
+}
+
+function el(id) { return document.getElementById(id) }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 load()

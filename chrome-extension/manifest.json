@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "K9 Web Protection — Porn & Adult Content Blocker",
   "short_name": "K9 Protection",
-  "version": "2.0.1",
-  "description": "Free porn blocker & parental control. Blocks adult content, pornography, and harmful sites. Family-friendly content filter with keyword blocking and custom lists.",
+  "version": "2.1.0",
+  "description": "Free porn & social media blocker. Block adult content, Facebook, Instagram, TikTok, Reddit and more. Focus Mode for students. Family parental control filter.",
 
   "permissions": [
     "storage",

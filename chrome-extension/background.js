@@ -93,12 +93,14 @@ async function syncDynamicRules(s) {
   const addRules  = []
   let id = DYNAMIC_ID_START
 
-  const push = (filter, reason = '') => {
-    const path = reason ? `/blocked.html?reason=${reason}` : '/blocked.html'
+  // NOTE: extensionPath must NOT contain query strings — Chrome rejects them
+  // and silently drops the entire updateDynamicRules call.
+  // The blocked.html page detects the reason from the blocked URL itself.
+  const push = (filter) => {
     addRules.push({
       id: id++,
       priority: 3,
-      action: { type: 'redirect', redirect: { extensionPath: path } },
+      action: { type: 'redirect', redirect: { extensionPath: '/blocked.html' } },
       condition: { urlFilter: filter, resourceTypes: ['main_frame'] },
     })
   }
@@ -114,21 +116,21 @@ async function syncDynamicRules(s) {
   for (const [key, domains] of Object.entries(SOCIAL_SITES)) {
     if (!blockSocial[key] && !s.focusMode) continue
     if (key === 'youtube' && !blockSocial.youtube && !s.focusMode) continue
-    for (const d of domains) push(`||${d}`, 'social')
+    for (const d of domains) push(`||${d}`)
   }
 
   // Focus mode also blocks image search
   if (s.focusMode || s.blockImageSearch) {
-    push('google.com/imghp',           'imgsearch')
-    push('google.com/search?*tbm=isch','imgsearch')
-    push('bing.com/images',            'imgsearch')
-    push('images.google.',             'imgsearch')
-    push('duckduckgo.com/*iax=images', 'imgsearch')
+    push('google.com/imghp')
+    push('google.com/search?*tbm=isch')
+    push('bing.com/images')
+    push('images.google.')
+    push('duckduckgo.com/*iax=images')
   }
 
   // blockYouTube toggle (content section, separate from social)
   if (s.blockYouTube && !blockSocial.youtube && !s.focusMode) {
-    for (const d of SOCIAL_SITES.youtube) push(`||${d}`, 'social')
+    for (const d of SOCIAL_SITES.youtube) push(`||${d}`)
   }
 
   // Allow list — highest priority

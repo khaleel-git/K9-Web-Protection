@@ -137,12 +137,24 @@ async function save(patch) {
 }
 
 function ask(type, data) {
-  return new Promise(resolve =>
-    chrome.runtime.sendMessage({ type, settings: data }, resolve)
-  )
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ type, settings: data }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn('K9:', chrome.runtime.lastError.message)
+          resolve(type === 'GET_SETTINGS' ? {} : null)
+          return
+        }
+        resolve(response || (type === 'GET_SETTINGS' ? {} : null))
+      })
+    } catch (e) {
+      console.warn('K9 ask error:', e)
+      resolve(type === 'GET_SETTINGS' ? {} : null)
+    }
+  })
 }
 
 function el(id) { return document.getElementById(id) }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-load()
+load().catch(e => console.error('K9 popup init error:', e))

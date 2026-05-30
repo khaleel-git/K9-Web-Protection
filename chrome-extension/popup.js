@@ -1,16 +1,37 @@
 // K9 Web Protection — Popup
-// No inline event handlers — all binding done here to satisfy MV3 CSP.
 
 const SOCIAL_KEYS = [
   'facebook','instagram','twitter','reddit',
   'tiktok','youtube','snapchat','pinterest','linkedin',
 ]
 
+// Mirrors SOCIAL_SITES in background.js — used to detect which toggle to flip
+const SOCIAL_SITES_MAP = {
+  facebook:  ['facebook.com', 'fb.com', 'messenger.com', 'facebook.net'],
+  instagram: ['instagram.com'],
+  twitter:   ['twitter.com', 'x.com', 't.co'],
+  reddit:    ['reddit.com', 'redd.it'],
+  tiktok:    ['tiktok.com', 'tiktokv.com'],
+  youtube:   ['youtube.com', 'youtu.be', 'youtube-nocookie.com'],
+  snapchat:  ['snapchat.com'],
+  pinterest: ['pinterest.com', 'pin.it'],
+  linkedin:  ['linkedin.com'],
+}
+
 let settings      = {}
 let currentDomain = ''
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function el(id) { return document.getElementById(id) }
+
+// Returns the SOCIAL_SITES_MAP key for a given hostname, or null
+function getSocialKey(host) {
+  host = host.toLowerCase().replace(/^www\./, '')
+  for (const [key, domains] of Object.entries(SOCIAL_SITES_MAP)) {
+    if (domains.some(d => host === d || host.endsWith('.' + d))) return key
+  }
+  return null
+}
 
 function ask(type, data) {
   return new Promise((resolve) => {
@@ -36,6 +57,42 @@ async function save(patch) {
   await ask('SAVE_SETTINGS', merged)
 }
 
+// ── Allowlist rendering ───────────────────────────────────────────────────────
+function renderAllowlist(list) {
+  const section = el('allowed-section')
+  const hdr     = el('allowed-hdr')
+  if (!list || list.length === 0) {
+    hdr.style.display     = 'none'
+    section.style.display = 'none'
+    section.innerHTML     = ''
+    return
+  }
+  hdr.style.display     = 'block'
+  section.style.display = 'block'
+  section.innerHTML = list.map(domain =>
+    `<div class="allowed-item">
+       <span class="allowed-icon">✅</span>
+       <span class="allowed-domain">${domain}</span>
+       <button class="allowed-remove" data-domain="${domain}" title="Remove">×</button>
+     </div>`
+  ).join('')
+
+  section.querySelectorAll('.allowed-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeAllowed(btn.dataset.domain))
+  })
+}
+
+async function removeAllowed(domain) {
+  const userAllowlist = (settings.userAllowlist || []).filter(d => d !== domain)
+  await save({ userAllowlist })
+  renderAllowlist(userAllowlist)
+
+  // Update current-site buttons if the removed domain is the active tab
+  if (domain === currentDomain) {
+    el('btn-allow').classList.remove('active')
+  }
+}
+
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function load() {
   settings = await ask('GET_SETTINGS') || {}
@@ -47,15 +104,15 @@ async function load() {
   el('stat-today').textContent = (stats.blockedToday || 0).toLocaleString()
   el('stat-total').textContent = (stats.totalBlocked  || 0).toLocaleString()
 
-  el('toggle-adult').checked  = settings.blockAdultContent !== false
+  el('toggle-adult').checked = settings.blockAdultContent !== false
 
   for (const key of SOCIAL_KEYS) {
-    const id    = `toggle-${key === 'youtube' ? 'youtube-social' : key}`
-    const input = el(id)
+    const input = el(`toggle-${key === 'youtube' ? 'youtube-social' : key}`)
     if (input) input.checked = blockSocial[key] === true
   }
 
   updateFocusBtn(focusMode)
+  renderAllowlist(settings.userAllowlist || [])
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   if (tab?.url) {
@@ -112,22 +169,39 @@ function blockCurrent() {
   el('btn-block').classList.add('active')
   el('btn-allow').classList.remove('active')
   save({ userBlocklist, userAllowlist })
+  renderAllowlist(userAllowlist)
 }
 
 function allowCurrent() {
   if (!currentDomain || el('btn-allow').classList.contains('active')) return
+
   const userAllowlist = [...(settings.userAllowlist || []), currentDomain]
   const userBlocklist = (settings.userBlocklist || []).filter(d => d !== currentDomain)
+
   el('btn-allow').classList.add('active')
   el('btn-block').classList.remove('active')
-  save({ userAllowlist, userBlocklist })
+
+  // If this is a social media site, flip its individual toggle off
+  const patch = { userAllowlist, userBlocklist }
+  const socialKey = getSocialKey(currentDomain)
+  if (socialKey && settings.blockSocial?.[socialKey]) {
+    const blockSocial = { ...(settings.blockSocial || {}), [socialKey]: false }
+    patch.blockSocial = blockSocial
+    settings.blockSocial = blockSocial
+    const toggleId = `toggle-${socialKey === 'youtube' ? 'youtube-social' : socialKey}`
+    const toggle = el(toggleId)
+    if (toggle) toggle.checked = false
+  }
+
+  save(patch)
+  renderAllowlist(userAllowlist)
 }
 
-// ── Event listeners (no inline onclick — MV3 CSP requires this) ───────────────
+// ── Event listeners ───────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  el('btn-block').addEventListener('click',  blockCurrent)
-  el('btn-allow').addEventListener('click',  allowCurrent)
-  el('focus-btn').addEventListener('click',  toggleFocusMode)
+  el('btn-block').addEventListener('click', blockCurrent)
+  el('btn-allow').addEventListener('click', allowCurrent)
+  el('focus-btn').addEventListener('click', toggleFocusMode)
 
   el('toggle-enabled').addEventListener('change', (e) => {
     const on = e.target.checked
@@ -135,13 +209,29 @@ document.addEventListener('DOMContentLoaded', () => {
     save({ enabled: on })
   })
 
-  el('toggle-adult').addEventListener('change', e => save({ blockAdultContent: e.target.checked }))
+  el('toggle-adult').addEventListener('change', e =>
+    save({ blockAdultContent: e.target.checked })
+  )
 
   document.querySelectorAll('[data-social]').forEach(input => {
     input.addEventListener('change', (e) => {
-      const key        = e.target.dataset.social
+      const key       = e.target.dataset.social
       const blockSocial = { ...(settings.blockSocial || {}), [key]: e.target.checked }
       settings.blockSocial = blockSocial
+
+      // Turning a social site ON should remove it from the allowlist
+      if (e.target.checked) {
+        const domains = SOCIAL_SITES_MAP[key] || []
+        const userAllowlist = (settings.userAllowlist || [])
+          .filter(d => !domains.some(sd => d === sd || d.endsWith('.' + sd)))
+        if (userAllowlist.length !== (settings.userAllowlist || []).length) {
+          settings.userAllowlist = userAllowlist
+          renderAllowlist(userAllowlist)
+          save({ blockSocial, userAllowlist })
+          return
+        }
+      }
+
       save({ blockSocial })
     })
   })

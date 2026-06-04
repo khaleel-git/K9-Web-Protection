@@ -3,336 +3,394 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>K9 Web Protection</title>
+  <title>K9 Web Protection Administration</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <div id="app">
-    <!-- Title bar drag region -->
-    <div class="titlebar" style="--wails-draggable:drag"></div>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="brand-icon">🛡️</span>
-        <div class="brand-name">K9 Web Protection</div>
+  <!-- ── TITLE BAR (drag region) ──────────────────────────────────────────── -->
+  <div class="titlebar" style="--wails-draggable:drag"></div>
+
+  <!-- ── HEADER ────────────────────────────────────────────────────────────── -->
+  <div class="k9-header">
+    <div class="k9-brand">
+      <span class="k9-dog">🐕</span>
+      <span class="k9-title">K9 Web Protection Administration</span>
+    </div>
+    <div class="k9-header-right">
+      <div class="k9-status-pill" id="header-status">● Active</div>
+    </div>
+  </div>
+
+  <!-- ── TOP NAV TABS ───────────────────────────────────────────────────────── -->
+  <div class="k9-tabs">
+    <a class="k9-tab active" data-tab="home"     data-page="home">
+      🏠 HOME
+    </a>
+    <a class="k9-tab" data-tab="activity" data-page="activity">
+      📊 VIEW INTERNET ACTIVITY
+    </a>
+    <a class="k9-tab" data-tab="setup"    data-page="setup-categories">
+      🔧 SETUP
+    </a>
+  </div>
+
+  <!-- ── MAIN LAYOUT ───────────────────────────────────────────────────────── -->
+  <div class="k9-body">
+
+    <!-- Sidebar (only visible on Setup and Activity tabs) -->
+    <div class="k9-sidebar" id="k9-sidebar">
+
+      <!-- Setup sidebar -->
+      <div class="sidebar-group" id="sidebar-setup">
+        <div class="sidebar-header">SETUP</div>
+        <a class="sidebar-link active" data-page="setup-categories">🌐 Web Categories to Block</a>
+        <a class="sidebar-link" data-page="setup-exceptions">⚡ Web Site Exceptions</a>
+        <a class="sidebar-link" data-page="setup-keywords">🔑 URL Keywords</a>
+        <a class="sidebar-link" data-page="setup-password">🔒 Password / Security</a>
       </div>
 
-      <nav class="nav">
-        <a class="nav-item active" data-page="dashboard">
-          <span class="nav-icon">⊙</span> Dashboard
-        </a>
-        <a class="nav-item" data-page="blocklist">
-          <span class="nav-icon">🚫</span> Block List
-        </a>
-        <a class="nav-item" data-page="allowlist">
-          <span class="nav-icon">✅</span> Allow List
-        </a>
-        <a class="nav-item" data-page="keywords">
-          <span class="nav-icon">🔑</span> Keywords
-        </a>
-        <a class="nav-item" data-page="settings">
-          <span class="nav-icon">⚙️</span> Settings
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="version">v2.0.0 — Open Source</div>
+      <!-- Activity sidebar -->
+      <div class="sidebar-group" id="sidebar-activity" style="display:none">
+        <div class="sidebar-header">VIEW INTERNET ACTIVITY</div>
+        <a class="sidebar-link active" data-page="activity">📈 View Activity Summary</a>
       </div>
-    </aside>
 
-    <!-- Main content -->
-    <main class="content">
-      <!-- ── DASHBOARD ──────────────────────────────────────────────── -->
-      <section id="page-dashboard" class="page active">
-        <div class="page-header">
-          <h1>Dashboard</h1>
-          <p>Your protection overview</p>
+    </div>
+
+    <!-- ── CONTENT AREA ──────────────────────────────────────────────────────── -->
+    <div class="k9-content">
+
+      <!-- ── HOME ──────────────────────────────────────────────────────────── -->
+      <div id="page-home" class="page active">
+        <div class="page-title">
+          <img class="page-icon" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='18' font-size='18'>🏠</text></svg>" />
+          Protection Status
+        </div>
+        <div class="help-box" id="home-help">
+          K9 Web Protection is monitoring your internet connection. Both protection layers must be active for full coverage.
         </div>
 
-        <div class="status-hero" id="status-hero">
-          <div class="status-icon" id="status-icon">🛡️</div>
-          <div class="status-text" id="status-text">Loading…</div>
-          <div class="status-sub" id="status-sub">Checking protection status</div>
-          <div class="status-actions">
-            <button class="btn btn-danger" id="btn-disable" onclick="disableProtection()" style="display:none">
-              Disable Protection
-            </button>
-            <button class="btn btn-primary" id="btn-enable" onclick="enableProtection()" style="display:none">
-              Enable Protection
-            </button>
-          </div>
-        </div>
+        <table class="k9-table" style="margin-bottom:16px">
+          <thead>
+            <tr><th colspan="2">Protection Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="label-cell">Layer 1 — Hosts File</td>
+              <td id="status-layer1"><span class="dot-inactive">●</span> Checking…</td>
+            </tr>
+            <tr>
+              <td class="label-cell">Layer 2 — Proxy</td>
+              <td id="status-layer2"><span class="dot-inactive">●</span> Checking…</td>
+            </tr>
+            <tr>
+              <td class="label-cell">Proxy Port</td>
+              <td id="status-port">—</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Blocked Today</div>
-            <div class="stat-value" id="stat-today">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Blocked</div>
-            <div class="stat-value" id="stat-total">—</div>
-          </div>
-          <div class="stat-card" id="layer1-card">
-            <div class="stat-label">Layer 1 — Hosts</div>
-            <div class="stat-value" id="stat-layer1">—</div>
-          </div>
-          <div class="stat-card" id="layer2-card">
-            <div class="stat-label">Layer 2 — Proxy</div>
-            <div class="stat-value" id="stat-layer2">—</div>
-          </div>
-        </div>
+        <table class="k9-table" style="margin-bottom:16px">
+          <thead>
+            <tr><th colspan="2">Activity Summary</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="label-cell">Blocked Today</td>
+              <td><strong id="stat-today" class="stat-num">—</strong></td>
+            </tr>
+            <tr>
+              <td class="label-cell">Total Blocked (all time)</td>
+              <td><strong id="stat-total" class="stat-num">—</strong></td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div class="db-banner">
-          <div class="db-banner-icon">🗄️</div>
+        <table class="k9-table">
+          <thead>
+            <tr><th colspan="2">Built-in Database</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="label-cell">Domain entries</td>
+              <td id="stat-domains">—</td>
+            </tr>
+            <tr>
+              <td class="label-cell">URL patterns</td>
+              <td id="stat-urls">—</td>
+            </tr>
+            <tr>
+              <td class="label-cell">Keyword entries</td>
+              <td id="stat-keywords">—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="button-row" style="margin-top:16px">
+          <button class="k9-btn k9-btn-green" id="btn-enable"  onclick="enableProtection()">✔ Enable Protection</button>
+          <button class="k9-btn k9-btn-red"   id="btn-disable" onclick="showDisableModal()" style="display:none">✖ Disable Protection</button>
+        </div>
+      </div>
+
+      <!-- ── VIEW INTERNET ACTIVITY ─────────────────────────────────────────── -->
+      <div id="page-activity" class="page">
+        <div class="page-title">📊 View Activity Summary</div>
+        <p class="page-desc">This is a summary of Web activity on your computer. <a class="more-link" href="#">More Help…</a></p>
+
+        <div class="two-col">
           <div>
-            <div class="db-banner-title" id="stat-db">Loading database…</div>
-            <div class="db-banner-sub" id="stat-db-sub">Built-in database active</div>
+            <table class="k9-table">
+              <thead><tr><th>Category</th><th style="text-align:right">Hits</th></tr></thead>
+              <tbody id="activity-categories">
+                <tr><td colspan="2" class="empty-row">No activity recorded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <table class="k9-table">
+              <thead><tr><th>General</th><th style="text-align:right">Hits</th></tr></thead>
+              <tbody>
+                <tr><td>Total Blocked</td><td style="text-align:right" id="gen-total">0</td></tr>
+                <tr><td>Blocked Today</td><td style="text-align:right" id="gen-today">0</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+      </div>
 
-        <div class="card" id="top-blocked-card" style="display:none">
-          <div class="card-title">Most Blocked Domains</div>
-          <ul class="top-list" id="top-blocked-list"></ul>
-        </div>
-      </section>
+      <!-- ── SETUP: WEB CATEGORIES TO BLOCK ────────────────────────────────── -->
+      <div id="page-setup-categories" class="page">
+        <div class="page-title">🌐 Web Categories to Block</div>
+        <p class="page-desc">Set the categories you want to block or allow. <a class="more-link" href="#">Hide Help…</a></p>
 
-      <!-- ── BLOCK LIST ─────────────────────────────────────────────── -->
-      <section id="page-blocklist" class="page">
-        <div class="page-header">
-          <h1>Block List</h1>
-          <p>Domains and websites that are always blocked</p>
+        <div class="help-box">
+          Select a protection level below. <strong>High</strong> blocks all adult content plus social networks and unrated sites. <strong>Default</strong> blocks adult content, security threats, and explicit material. <strong>Custom</strong> lets you choose individual categories.
         </div>
 
-        <div class="input-row">
-          <input type="text" id="blocklist-input" class="input" placeholder="Enter domain (e.g. example.com)" />
-          <button class="btn btn-primary" onclick="addToBlocklist()">Add</button>
+        <div class="level-list">
+          <label class="level-row" id="level-high">
+            <input type="radio" name="level" value="high" />
+            <strong>High</strong>
+            <span class="level-desc">Protects against all default-level categories plus social networks and unrated sites.</span>
+          </label>
+          <label class="level-row selected" id="level-default">
+            <input type="radio" name="level" value="default" checked />
+            <strong>Default</strong>
+            <span class="level-desc level-selected-label">Protects against all adult content, security threats, and sexually-suggestive sites.</span>
+            <div class="blocked-cats" id="blocked-cats-default">
+              <strong>The following categories are currently blocked.</strong>
+              <div class="cat-grid">
+                <span>Adult / Mature Content</span><span>Nudity</span><span>Pornography</span>
+                <span>Alternative Sexuality</span><span>Proxy Avoidance</span><span>Sex Education</span>
+                <span>Extreme / Violent</span><span>Illegal / Questionable</span><span>Spyware Sources</span>
+                <span>Gambling</span><span>Phishing</span><span>Violence / Hate</span>
+                <span>Hacking</span><span>Suspicious Sites</span><span>Illegal Drugs</span>
+              </div>
+            </div>
+          </label>
+          <label class="level-row" id="level-moderate">
+            <input type="radio" name="level" value="moderate" />
+            <strong>Moderate</strong>
+            <span class="level-desc">Protects against adult content, security threats, and illegal activity.</span>
+          </label>
+          <label class="level-row" id="level-minimal">
+            <input type="radio" name="level" value="minimal" />
+            <strong>Minimal</strong>
+            <span class="level-desc">Protects against pornography and security threats only.</span>
+          </label>
+          <label class="level-row" id="level-custom">
+            <input type="radio" name="level" value="custom" />
+            <strong>Custom</strong>
+            <span class="level-desc">Select your own categories to block.</span>
+          </label>
         </div>
 
-        <!-- Built-in database badge (read-only) -->
-        <div class="db-info-box">
-          <div class="db-info-icon">🗄️</div>
-          <div class="db-info-text">
-            <div class="db-info-title">Built-in Database <span class="db-badge">Always Active</span></div>
-            <div class="db-info-counts">
-              <span id="db-domains-count">…</span> &nbsp;·&nbsp;
-              <span id="db-urls-count">…</span>
+        <!-- Custom toggles -->
+        <div class="custom-section" id="custom-section" style="display:none">
+          <table class="k9-table">
+            <thead><tr><th colspan="2">Custom Category Settings</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="label-cell">Block adult content</td>
+                <td><input type="checkbox" id="cat-adult" checked /></td>
+              </tr>
+              <tr>
+                <td class="label-cell">Block YouTube</td>
+                <td><input type="checkbox" id="cat-youtube" /></td>
+              </tr>
+              <tr>
+                <td class="label-cell">Safe Search enforcement</td>
+                <td><input type="checkbox" id="cat-safesearch" checked /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="button-row">
+          <button class="k9-btn k9-btn-green" onclick="saveCategories()">✔ Save</button>
+          <button class="k9-btn" onclick="loadCategories()">✖ Cancel</button>
+        </div>
+      </div>
+
+      <!-- ── SETUP: WEB SITE EXCEPTIONS ─────────────────────────────────────── -->
+      <div id="page-setup-exceptions" class="page">
+        <div class="page-title">⚡ Web Site Exceptions</div>
+        <p class="page-desc">Create lists of Web sites to always block or always allow. <a class="more-link" href="#">More Help…</a></p>
+
+        <div class="exceptions-cols">
+          <!-- Always Block -->
+          <div class="exceptions-col">
+            <div class="exceptions-header always-block-hdr">
+              Always Block <span class="exceptions-sub">Block regardless of category</span>
+            </div>
+            <div class="exceptions-body">
+              <div class="field-label">Web Site to Add:</div>
+              <input type="text" id="blocklist-input" class="k9-input" placeholder="Enter a URL" />
+              <button class="k9-btn k9-btn-add" onclick="addToBlocklist()">⊕ Add to List</button>
+              <div class="exception-list" id="blocklist-items">
+                <div class="empty-row">No entries in this list</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Always Allow -->
+          <div class="exceptions-col">
+            <div class="exceptions-header always-allow-hdr">
+              Always Allow <span class="exceptions-sub">Allow regardless of category</span>
+            </div>
+            <div class="exceptions-body">
+              <div class="field-label">Web Site to Add:</div>
+              <input type="text" id="allowlist-input" class="k9-input" placeholder="Enter a URL" />
+              <button class="k9-btn k9-btn-add" onclick="addToAllowlist()">⊕ Add to List</button>
+              <div class="exception-list" id="allowlist-items">
+                <div class="empty-row">No entries in this list</div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- User additions -->
-        <div class="section-label" id="user-blocklist-label">Your additions (0)</div>
-        <div class="tag-grid" id="blocklist-tags"></div>
-        <div class="empty-state" id="blocklist-user-empty">
-          <div class="empty-icon">➕</div>
-          <div>No custom domains added yet — the built-in database is already protecting you</div>
+        <div class="button-row">
+          <button class="k9-btn k9-btn-green" onclick="saveExceptions()">✔ Save</button>
+          <button class="k9-btn" onclick="loadExceptions()">✖ Cancel</button>
         </div>
-      </section>
+      </div>
 
-      <!-- ── ALLOW LIST ─────────────────────────────────────────────── -->
-      <section id="page-allowlist" class="page">
-        <div class="page-header">
-          <h1>Allow List</h1>
-          <p>Sites that are always allowed, even if they match a blocked pattern</p>
-        </div>
+      <!-- ── SETUP: URL KEYWORDS ─────────────────────────────────────────────── -->
+      <div id="page-setup-keywords" class="page">
+        <div class="page-title">🔑 URL Keywords</div>
+        <p class="page-desc">Block any URL that contains the following keywords. <a class="more-link" href="#">More Help…</a></p>
 
-        <div class="input-row">
-          <input type="text" id="allowlist-input" class="input" placeholder="Enter domain (e.g. work.example.com)" />
-          <button class="btn btn-primary" onclick="addToAllowlist()">Add</button>
+        <div class="help-box">
+          The built-in database already includes thousands of keyword triggers. Add your own below for additional coverage. Keywords are matched against the full URL of every web request.
         </div>
 
-        <div class="tag-grid" id="allowlist-tags"></div>
-        <div class="empty-state" id="allowlist-empty">
-          <div class="empty-icon">✅</div>
-          <div>No sites on the allow list yet</div>
-        </div>
-      </section>
+        <table class="k9-table" style="margin-bottom:12px">
+          <thead><tr><th colspan="2">Built-in Database</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="label-cell">Built-in keyword entries</td>
+              <td id="kw-builtin-count">—</td>
+            </tr>
+          </tbody>
+        </table>
 
-      <!-- ── KEYWORDS ───────────────────────────────────────────────── -->
-      <section id="page-keywords" class="page">
-        <div class="page-header">
-          <h1>Keywords</h1>
-          <p>Block any URL containing these words or phrases</p>
+        <div class="k9-fieldset">
+          <div class="fieldset-title">Your Custom Keywords</div>
+          <div class="input-row">
+            <input type="text" id="keyword-input" class="k9-input" placeholder="Enter a keyword or phrase" />
+            <button class="k9-btn k9-btn-add" onclick="addKeyword()">⊕ Add</button>
+          </div>
+          <div class="keyword-list" id="keyword-items">
+            <div class="empty-row">No custom keywords added.</div>
+          </div>
         </div>
+      </div>
 
-        <div class="input-row">
-          <input type="text" id="keyword-input" class="input" placeholder="Enter keyword or phrase" />
-          <button class="btn btn-primary" onclick="addKeyword()">Add</button>
-        </div>
+      <!-- ── SETUP: PASSWORD / SECURITY ─────────────────────────────────────── -->
+      <div id="page-setup-password" class="page">
+        <div class="page-title">🔒 Password / Security</div>
+        <p class="page-desc">Control access to the K9 Administration panel and protection settings.</p>
 
-        <!-- Built-in keywords badge -->
-        <div class="db-info-box">
-          <div class="db-info-icon">🗄️</div>
-          <div class="db-info-text">
-            <div class="db-info-title">Built-in Keywords <span class="db-badge">Always Active</span></div>
-            <div class="db-info-counts" id="db-keywords-count">…</div>
+        <div class="k9-fieldset">
+          <div class="fieldset-title">Change Password</div>
+          <table class="form-table">
+            <tr>
+              <td class="label-cell">Current Password</td>
+              <td><input type="password" id="pw-current" class="k9-input" placeholder="Leave blank if none set" /></td>
+            </tr>
+            <tr>
+              <td class="label-cell">New Password</td>
+              <td><input type="password" id="pw-new" class="k9-input" placeholder="Leave blank to remove password" /></td>
+            </tr>
+            <tr>
+              <td class="label-cell">Confirm Password</td>
+              <td><input type="password" id="pw-confirm" class="k9-input" placeholder="Repeat new password" /></td>
+            </tr>
+          </table>
+          <div class="button-row">
+            <button class="k9-btn k9-btn-green" onclick="savePassword()">✔ Save Password</button>
           </div>
         </div>
 
-        <div class="info-box">
-          <strong>Note:</strong> Keywords apply to HTTP traffic and URL paths.
-          For full domain blocking use the Block List.
+        <div class="k9-fieldset" style="margin-top:16px">
+          <div class="fieldset-title">Disable Delay</div>
+          <p class="page-desc" style="margin-bottom:8px">Require a waiting period before protection can be disabled. Prevents impulsive bypassing.</p>
+          <table class="form-table">
+            <tr>
+              <td class="label-cell">Delay duration</td>
+              <td>
+                <select id="setting-delay" class="k9-select" onchange="saveAdvancedSettings()">
+                  <option value="0">Off — no delay</option>
+                  <option value="1">1 hour</option>
+                  <option value="24">24 hours</option>
+                  <option value="48">48 hours</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td class="label-cell">Proxy port</td>
+              <td>
+                <input type="number" id="setting-port" class="k9-input" style="width:80px" min="1024" max="65535" />
+                <button class="k9-btn" style="margin-left:8px" onclick="saveProxySettings()">Save</button>
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <!-- User additions -->
-        <div class="section-label" id="user-keywords-label">Your additions (0)</div>
-        <div class="tag-grid" id="keywords-tags"></div>
-        <div class="empty-state" id="keywords-user-empty">
-          <div class="empty-icon">➕</div>
-          <div>No custom keywords added yet</div>
+        <div class="k9-fieldset danger-zone" style="margin-top:16px">
+          <div class="fieldset-title">Uninstall K9 Web Protection</div>
+          <p class="page-desc" style="margin-bottom:8px">Permanently removes all protection, blocklists, and settings from this Mac.</p>
+          <button class="k9-btn k9-btn-red" onclick="showUninstall()">✖ Uninstall K9…</button>
         </div>
-      </section>
+      </div>
 
-      <!-- ── SETTINGS ───────────────────────────────────────────────── -->
-      <section id="page-settings" class="page">
-        <div class="page-header">
-          <h1>Settings</h1>
-          <p>Configure K9 Web Protection</p>
-        </div>
+    </div><!-- /k9-content -->
+  </div><!-- /k9-body -->
 
-        <!-- Content Blocking -->
-        <div class="settings-section">
-          <div class="settings-section-header">🌐 Content Blocking</div>
-          <div class="settings-card">
-            <label class="setting-row">
-              <div class="setting-info">
-                <div class="setting-name">Block adult content</div>
-                <div class="setting-desc">Activates the full built-in domain and keyword database</div>
-              </div>
-              <div class="toggle" id="toggle-adult" onclick="toggleContent('adult')"><div class="toggle-thumb"></div></div>
-            </label>
-            <div class="setting-divider"></div>
-            <label class="setting-row">
-              <div class="setting-info">
-                <div class="setting-name">Block image &amp; video search</div>
-                <div class="setting-desc">Blocks Google Images, Bing Images and similar</div>
-              </div>
-              <div class="toggle" id="toggle-imgsearch" onclick="toggleContent('imgsearch')"><div class="toggle-thumb"></div></div>
-            </label>
-            <div class="setting-divider"></div>
-            <label class="setting-row">
-              <div class="setting-info">
-                <div class="setting-name">Block YouTube</div>
-                <div class="setting-desc">Completely blocks youtube.com and related domains</div>
-              </div>
-              <div class="toggle" id="toggle-youtube" onclick="toggleContent('youtube')"><div class="toggle-thumb"></div></div>
-            </label>
-            <div class="setting-divider"></div>
-            <label class="setting-row">
-              <div class="setting-info">
-                <div class="setting-name">Safe Search</div>
-                <div class="setting-desc">Forces safe search on Google, Bing, and DuckDuckGo via /etc/hosts</div>
-              </div>
-              <div class="toggle" id="toggle-safesearch" onclick="toggleContent('safesearch')"><div class="toggle-thumb"></div></div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Uninstall Protection (Password) -->
-        <div class="settings-section">
-          <div class="settings-section-header">🔑 Uninstall Protection</div>
-          <div class="settings-card">
-            <div class="field">
-              <label class="field-label">Current Password</label>
-              <input type="password" id="pw-current" class="input" placeholder="Leave blank if none set" />
-            </div>
-            <div class="field">
-              <label class="field-label">New Password</label>
-              <input type="password" id="pw-new" class="input" placeholder="Leave blank to remove" />
-            </div>
-            <div class="field" style="margin-bottom:0">
-              <label class="field-label">Confirm Password</label>
-              <input type="password" id="pw-confirm" class="input" placeholder="Repeat new password" />
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="savePassword()">Save Password</button>
-        </div>
-
-        <!-- Danger Zone -->
-        <div class="settings-section">
-          <div class="settings-section-header" style="color:var(--red)">⚠️ Danger Zone</div>
-          <div class="settings-card card-danger">
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-name" style="color:var(--red)">Uninstall K9</div>
-                <div class="setting-desc">Permanently removes all protection, blocklists, and data</div>
-              </div>
-              <button class="btn btn-danger btn-sm" onclick="showUninstall()">Uninstall…</button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+  <!-- ── FOOTER ────────────────────────────────────────────────────────────── -->
+  <div class="k9-footer">
+    K9 Web Protection v2.0 — Open Source &nbsp;|&nbsp; Inspired by Blue Coat K9
   </div>
 
-  <!-- ── MODALS ──────────────────────────────────────────────────────── -->
-  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+  <!-- ── STATUS MESSAGE BAR ────────────────────────────────────────────────── -->
+  <div class="k9-msg" id="k9-msg"></div>
 
-  <!-- Disable confirmation -->
-  <div class="modal" id="modal-disable">
-    <div class="modal-icon">⚠️</div>
-    <div class="modal-title">Disable Protection?</div>
-    <p class="modal-desc">This will turn off all web filtering. You'll be unprotected.</p>
-    <div id="disable-pw-field" class="field" style="display:none">
-      <label class="field-label">Password required</label>
-      <input type="password" id="disable-pw" class="input" placeholder="Enter password" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmDisable()">Disable</button>
+  <!-- ── DISABLE MODAL ─────────────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-title">⚠ Disable Protection?</div>
+      <p class="modal-desc">This will turn off all web filtering. You will be unprotected.</p>
+      <div id="disable-pw-row" style="display:none;margin-bottom:10px">
+        <label class="field-label">Password required:</label>
+        <input type="password" id="disable-pw" class="k9-input" placeholder="Enter password" />
+      </div>
+      <div class="button-row">
+        <button class="k9-btn k9-btn-green" onclick="closeModal()">✔ Cancel</button>
+        <button class="k9-btn k9-btn-red"   onclick="confirmDisable()">✖ Disable</button>
+      </div>
     </div>
   </div>
-
-  <!-- Uninstall confirmation -->
-  <div class="modal" id="modal-uninstall">
-    <div class="modal-icon">⚠️</div>
-    <div class="modal-title">Uninstall K9 Web Protection?</div>
-    <p class="modal-desc">This will permanently remove all protection, blocklists, and settings from this Mac.</p>
-    <div id="uninstall-pw-field" class="field" style="display:none">
-      <label class="field-label">Password required</label>
-      <input type="password" id="uninstall-pw" class="input" placeholder="Enter password" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="confirmUninstall()">Uninstall</button>
-    </div>
-  </div>
-
-  <!-- Generic password confirmation modal -->
-  <div class="modal" id="modal-auth">
-    <div class="modal-icon">🔐</div>
-    <div class="modal-title" id="modal-auth-title">Password Required</div>
-    <p class="modal-desc" id="modal-auth-desc">Enter your password to continue.</p>
-    <div class="field">
-      <label class="field-label">Password</label>
-      <input type="password" id="auth-pw" class="input" placeholder="Enter password"
-             onkeydown="if(event.key==='Enter') confirmAuth()" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="cancelAuth()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmAuth()">Confirm</button>
-    </div>
-  </div>
-
-  <!-- Quit confirmation (password required) -->
-  <div class="modal" id="modal-kill">
-    <div class="modal-icon">🔐</div>
-    <div class="modal-title">Password Required to Quit</div>
-    <p class="modal-desc">K9 is protecting you. Enter your password to close it.</p>
-    <div class="field">
-      <label class="field-label">Password</label>
-      <input type="password" id="kill-pw" class="input" placeholder="Enter password"
-             onkeydown="if(event.key==='Enter') confirmKill()" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Stay Protected</button>
-      <button class="btn btn-danger" onclick="confirmKill()">Quit</button>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

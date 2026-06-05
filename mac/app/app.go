@@ -96,6 +96,10 @@ func (a *App) startup(ctx context.Context) {
 		a.cfg.IncrementBlocked(domain)
 		a.cfg.Save()
 	})
+	// Enforce SafeSearch via /etc/hosts on startup
+	if a.cfg.SafeSearch {
+		go hosts.SetSafeSearch(true)
+	}
 	if a.cfg.AutoStart {
 		go func() {
 			if err := a.startProxyAndWait(); err == nil {
@@ -109,11 +113,13 @@ func (a *App) startup(ctx context.Context) {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
 		for range sigs {
-			if a.cfg.PasswordHash != "" {
-				wailsruntime.EventsEmit(a.ctx, "kill-requested")
-			} else {
-				wailsruntime.Quit(a.ctx)
-			}
+			// Always clear the system proxy immediately so internet is not left broken
+			// if the process is killed before shutdown() can run.
+			a.setSystemProxy(false)
+			a.proxy.Stop()
+			atomic.StoreInt32(&a.proxyRunning, 0)
+			a.cfg.Save()
+			os.Exit(0)
 		}
 	}()
 }
@@ -302,7 +308,12 @@ func (a *App) SaveContentSettings(password string, s ContentSettings) error {
 	a.cfg.BlockImageSearch = s.BlockImageSearch
 	a.cfg.BlockYouTube = s.BlockYouTube
 	a.cfg.SafeSearch = s.SafeSearch
-	return a.cfg.Save()
+	if err := a.cfg.Save(); err != nil {
+		return err
+	}
+	// Apply or remove SafeSearch enforcement in /etc/hosts (requires admin once)
+	go hosts.SetSafeSearch(s.SafeSearch)
+	return nil
 }
 
 // ── Proxy Settings ────────────────────────────────────────────────────────────
@@ -383,6 +394,7 @@ func (a *App) Uninstall(password string) error {
 	a.proxy.Stop()
 	a.setSystemProxy(false)
 	hosts.Remove()
+	hosts.SetSafeSearch(false)
 	exec.Command("launchctl", "bootout", "system",
 		"/Library/LaunchAgents/com.k9webprotection.plist").Run()
 	os.Remove("/Library/LaunchAgents/com.k9webprotection.plist")
@@ -491,4 +503,33 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(buf)
+}
+
+// CACertPath returns the path to the K10 root CA certificate that must be
+// trusted in macOS Keychain for the HTTPS block page to display correctly.
+func (a *App) CACertPath() string { return proxy.CACertPath() }
+
+// InstallCACert adds the K10 root CA to the current user's login keychain
+// and marks it as trusted. Runs security(1) directly so macOS can show its
+// own interactive authorization dialog (osascript breaks that dialog).
+func (a *App) InstallCACert() error {
+	certPath := proxy.CACertPath()
+
+	// Step 1: import the cert into the login keychain (no admin needed)
+	loginKC := os.Getenv("HOME") + "/Library/Keychains/login.keychain-db"
+	exec.Command("security", "import", certPath, "-k", loginKC).Run()
+
+	// Step 2: mark it trusted for SSL/TLS — macOS will show its password dialog
+	out, err := exec.Command(
+		"security", "add-trusted-cert",
+		"-r", "trustRoot",
+		"-k", loginKC,
+		certPath,
+	).CombinedOutput()
+	if err != nil {
+		// Fall back: open the cert in Keychain Access for manual installation
+		exec.Command("open", certPath).Run()
+		return fmt.Errorf("auto-install failed — Keychain Access has been opened. Add the certificate and set Trust > SSL > Always Trust. (%s)", strings.TrimSpace(string(out)))
+	}
+	return nil
 }

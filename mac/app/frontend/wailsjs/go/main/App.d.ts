@@ -8,6 +8,8 @@ export function AddToAllowlist(arg1:string):Promise<void>;
 
 export function AddToBlocklist(arg1:string):Promise<void>;
 
+export function CACertPath():Promise<string>;
+
 export function ConfirmQuit(arg1:string):Promise<void>;
 
 export function DisableProtection(arg1:string):Promise<void>;
@@ -33,6 +35,8 @@ export function GetProxySettings():Promise<main.ProxySettings>;
 export function GetStatus():Promise<main.Status>;
 
 export function HasPassword():Promise<boolean>;
+
+export function InstallCACert():Promise<void>;
 
 export function RemoveFromAllowlist(arg1:string):Promise<void>;
 

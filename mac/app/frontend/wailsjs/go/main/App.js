@@ -14,6 +14,10 @@ export function AddToBlocklist(arg1) {
   return window['go']['main']['App']['AddToBlocklist'](arg1);
 }
 
+export function CACertPath() {
+  return window['go']['main']['App']['CACertPath']();
+}
+
 export function ConfirmQuit(arg1) {
   return window['go']['main']['App']['ConfirmQuit'](arg1);
 }
@@ -64,6 +68,10 @@ export function GetStatus() {
 
 export function HasPassword() {
   return window['go']['main']['App']['HasPassword']();
+}
+
+export function InstallCACert() {
+  return window['go']['main']['App']['InstallCACert']();
 }
 
 export function RemoveFromAllowlist(arg1) {

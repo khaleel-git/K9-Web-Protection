@@ -11,3 +11,8 @@ build/
 dist/
 *.spec
 .DS_Store
+
+# Compiled Go binaries
+mac/app/k9webprotection
+mac/app/k9
+windows/k9webprotection.exe

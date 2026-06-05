@@ -18,11 +18,14 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "K9 Web Protection",
-		Width:     900,
-		Height:    640,
-		MinWidth:  800,
-		MinHeight: 560,
+		Title:         "K9 Web Protection",
+		Width:         960,
+		Height:        660,
+		MinWidth:      960,
+		MinHeight:     660,
+		MaxWidth:      960,
+		MaxHeight:     660,
+		DisableResize: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

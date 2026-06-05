@@ -1,0 +1,6 @@
+{
+  "name": "Custom",
+  "description": "Select your own categories. User-defined via the UI.",
+  "categories": [],
+  "note": "Custom categories are stored in the app config, not here. This file is a placeholder."
+}

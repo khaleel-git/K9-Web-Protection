@@ -1,0 +1,5 @@
+{
+  "name": "Monitor",
+  "description": "Allows all traffic — logs only, no blocking.",
+  "categories": []
+}

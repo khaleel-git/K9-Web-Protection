@@ -1,0 +1,16 @@
+{
+  "name": "Moderate",
+  "description": "Adult content, security threats, illegal activity.",
+  "categories": [
+    "pornography",
+    "adult-mature",
+    "gambling",
+    "hacking",
+    "illegal-drugs",
+    "phishing",
+    "malware-spyware",
+    "extreme",
+    "violence-hate",
+    "suspicious"
+  ]
+}

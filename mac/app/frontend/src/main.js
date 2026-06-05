@@ -1,4 +1,4 @@
-// K9 Web Protection — Original UI wired to Go backend
+// K9 Web Protection — Professional UI wired to Go backend
 
 const go = () => window.go?.main?.App
 
@@ -21,7 +21,7 @@ function showTab(tabName) {
     showPage('home')
     loadDashboard()
   } else if (tabName === 'reports') {
-    sidebar.style.display = 'block'
+    sidebar.style.display = 'flex'
     sidebarSetup.style.display   = 'none'
     sidebarReports.style.display = 'block'
     clearSideLinks()
@@ -29,12 +29,15 @@ function showTab(tabName) {
     showPage('reports')
     loadActivity()
   } else if (tabName === 'setup') {
-    sidebar.style.display = 'block'
+    sidebar.style.display = 'flex'
     sidebarSetup.style.display   = 'block'
     sidebarReports.style.display = 'none'
     showPage('categories')
     setSideActive('categories')
     loadCategories()
+  } else if (tabName === 'help') {
+    sidebar.style.display = 'none'
+    showPage('help')
   }
 }
 
@@ -74,7 +77,11 @@ document.querySelectorAll('.sideLink').forEach(a => {
     if (page === 'categories') loadCategories()
     if (page === 'exceptions') loadExceptions()
     if (page === 'keywords')   loadKeywords()
+    if (page === 'safesearch') loadSafeSearch()
     if (page === 'password')   loadPasswordSettings()
+    if (page === 'advanced')   loadAdvanced()
+    if (page === 'update')     loadUpdate()
+    if (page === 'effects')    loadBlockingEffects()
   })
 })
 
@@ -91,30 +98,141 @@ function notify(msg, type = 'ok') {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
   if (!window.go?.main?.App) return
-  const s = await go().GetStatus()
+  const [s, bl, al, cs] = await Promise.all([
+    go().GetStatus(),
+    go().GetBlocklist(),
+    go().GetAllowlist(),
+    go().GetContentSettings(),
+  ])
 
-  const l1ok = s.layer1Active
-  const l2ok = s.proxyRunning
+  const l1ok   = s.layer1Active
+  const l2ok   = s.proxyRunning
   const active = l1ok && l2ok
 
-  document.getElementById('status-layer1').innerHTML = l1ok
-    ? '<span style="color:green">&#x25CF;</span> Active'
-    : '<span style="color:red">&#x25CF;</span> Inactive'
-  document.getElementById('status-layer2').innerHTML = l2ok
-    ? '<span style="color:green">&#x25CF;</span> Running'
-    : '<span style="color:red">&#x25CF;</span> Stopped'
+  // ── Header badge ──
+  const badge = document.getElementById('k9StatusDot')
+  if (active) { badge.textContent = 'Active';   badge.className = 'status-badge active' }
+  else        { badge.textContent = 'Inactive'; badge.className = 'status-badge' }
+
+  // ── Inactive warning bar ──
+  const inactiveBar = document.getElementById('protection-inactive-bar')
+  if (inactiveBar) inactiveBar.style.display = active ? 'none' : 'flex'
+  const btnEnable  = document.getElementById('btn-enable')
+  const btnDisable = document.getElementById('btn-disable')
+  if (btnEnable)  btnEnable.style.display  = active ? 'none'       : 'inline-flex'
+  if (btnDisable) btnDisable.style.display = active ? 'inline-flex' : 'none'
+
+  // ── Stat cards ──
   document.getElementById('stat-today').textContent = s.blockedToday.toLocaleString()
   document.getElementById('stat-total').textContent = s.totalBlocked.toLocaleString()
-  document.getElementById('stat-db').textContent =
-    `${s.dbDomains.toLocaleString()} domains, ${s.dbUrls.toLocaleString()} URL patterns, ${s.dbKeywords.toLocaleString()} keywords`
 
-  document.getElementById('btn-enable').style.display  = active ? 'none' : 'inline'
-  document.getElementById('btn-disable').style.display = active ? 'inline' : 'none'
+  const allowCount = al?.length ?? 0
+  const blockCount = bl?.userAdded?.length ?? 0
+  const excEl = document.getElementById('stat-exceptions')
+  if (excEl) excEl.innerHTML =
+    `${allowCount} <span style="font-size:9px;color:#888;font-weight:600">allow</span>&nbsp;&nbsp;` +
+    `${blockCount} <span style="font-size:9px;color:#888;font-weight:600">block</span>`
 
-  const dot = document.getElementById('k9StatusDot')
-  if (active) { dot.textContent = 'Active';   dot.className = 'active' }
-  else        { dot.textContent = 'Inactive'; dot.className = '' }
+  const levelLabel = cs.blockAdultContent ? 'Default' : 'Minimal'
+  const levelSubEl = document.getElementById('stat-filter-sub')
+  const levelEl    = document.getElementById('stat-filter-level')
+  if (levelEl) levelEl.textContent = levelLabel
+  if (levelSubEl) levelSubEl.textContent = cs.blockAdultContent ? '18 categories blocked' : 'Threats only'
+
+  // ── DB chips ──
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+  setText('db-domains',  s.dbDomains.toLocaleString())
+  setText('db-urls',     s.dbUrls.toLocaleString())
+  setText('db-keywords', s.dbKeywords.toLocaleString())
+
+  // ── Protection modules ──
+  const setMod = (dotId, valId, on) => {
+    const dot = document.getElementById(dotId)
+    const val = document.getElementById(valId)
+    if (dot) dot.className = 'prot-dot ' + (on ? 'on' : 'off')
+    if (val) { val.textContent = on ? 'Active' : 'Inactive'; val.className = 'prot-val ' + (on ? 'active' : 'inactive') }
+  }
+  setMod('dot-web-protection', 'mod-web-protection', active)
+  setMod('dot-malware',        'mod-malware',        l2ok)
+  setMod('dot-safesearch',     'mod-safesearch',     cs.safeSearch !== false)
+  setMod('dot-https',          'mod-https',          l2ok)
+  setMod('dot-dns',            'mod-dns',            l1ok)
+
+  // ── Top blocked categories bar chart (from topBlocked domain data) ──
+  renderTopCategoriesChart(s.topBlocked)
+
+  // ── Recent blocked activity (placeholder — real data needs backend work, see plan.md) ──
+  renderRecentActivity(s.topBlocked)
 }
+
+function renderTopCategoriesChart(topBlocked) {
+  const el = document.getElementById('top-categories-bars')
+  if (!el) return
+  if (!topBlocked?.length) {
+    el.innerHTML = '<div class="dash-bar-row"><span class="dash-bar-label" style="width:auto;color:#aaa">No data yet</span></div>'
+    return
+  }
+  const top5 = topBlocked.slice(0, 5)
+  const max  = top5[0]?.count || 1
+  const colors = ['#991b1b','#92400e','#1e40af','#854d0e','#6b21a8']
+  el.innerHTML = top5.map((e, i) => {
+    const label = e.domain.length > 12 ? e.domain.slice(0, 11) + '…' : e.domain
+    const pct = Math.round(e.count / max * 100)
+    return `<div class="dash-bar-row">
+      <span class="dash-bar-label">${esc(label)}</span>
+      <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
+      <span class="dash-bar-val">${e.count}</span>
+    </div>`
+  }).join('')
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—:—'
+  const d = new Date(iso)
+  if (isNaN(d)) return '—:—'
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+function renderRecentActivity(topBlocked) {
+  const el = document.getElementById('recent-activity')
+  if (!el) return
+  if (!topBlocked?.length) {
+    el.innerHTML = '<div class="dash-recent-row"><span class="dash-recent-url muted">No activity recorded yet.</span></div>'
+    return
+  }
+  const catClass = (domain) => {
+    if (/porn|xxx|adult|sex|hub|babes|eliteb/.test(domain)) return 'cat-porn'
+    if (/casino|gambl|poker|slot/.test(domain)) return 'cat-gamble'
+    if (/malware|trojan|virus|hack/.test(domain)) return 'cat-malware'
+    if (/phish|fake/.test(domain)) return 'cat-phish'
+    if (/hate|violen/.test(domain)) return 'cat-violence'
+    return 'cat-other'
+  }
+  const catLabel = (domain) => {
+    if (/porn|xxx|adult|sex|hub|babes|eliteb/.test(domain)) return 'Pornography'
+    if (/casino|gambl|poker|slot/.test(domain)) return 'Gambling'
+    if (/malware|trojan|virus|hack/.test(domain)) return 'Malware'
+    if (/phish|fake/.test(domain)) return 'Phishing'
+    if (/hate|violen/.test(domain)) return 'Violence'
+    return 'Blocked'
+  }
+  el.innerHTML = topBlocked.slice(0, 8).map(e =>
+    `<div class="dash-recent-row">
+      <span class="dash-recent-time">${fmtTime(e.lastSeen)}</span>
+      <span class="dash-recent-url">${esc(e.domain)}</span>
+      <span class="dash-recent-cat ${catClass(e.domain)}">${catLabel(e.domain)}</span>
+    </div>`
+  ).join('')
+}
+
+function verifyProtection() {
+  if (!window.go?.main?.App) return
+  go().GetStatus().then(s => {
+    const ok = s.layer1Active && s.proxyRunning
+    notify(ok ? 'All modules verified — protection is active.' : 'Warning: protection is not fully active.', ok ? 'ok' : 'err')
+  })
+}
+window.verifyProtection = verifyProtection
 
 async function enableProtection() {
   try { await go().EnableProtection(); notify('Protection enabled.', 'ok'); loadDashboard() }
@@ -149,21 +267,18 @@ async function loadActivity() {
   document.getElementById('gen-total').textContent = s.totalBlocked.toLocaleString()
   document.getElementById('gen-today').textContent = s.blockedToday.toLocaleString()
 
-  const tbody = document.getElementById('activity-rows')
+  const container = document.getElementById('activity-rows')
   if (!s.topBlocked?.length) {
-    tbody.innerHTML = '<tr><td colspan="2" style="padding:6px; color:#888; font-style:italic">No activity recorded yet.</td></tr>'
+    container.innerHTML = '<div class="act-row"><span class="muted">No activity recorded yet.</span></div>'
     return
   }
-  let alt = false
-  tbody.innerHTML = s.topBlocked
+  container.innerHTML = s.topBlocked
     .sort((a, b) => b.count - a.count)
-    .map(e => {
-      const row = `<tr ${alt ? 'style="background:#e8eeff"' : ''}>
-        <td style="padding:4px 8px; color:#cc2222">&#x29B8; ${esc(e.domain)}</td>
-        <td style="text-align:right; padding:4px 8px">${e.count}</td>
-      </tr>`
-      alt = !alt; return row
-    }).join('')
+    .map(e => `<div class="act-row">
+      <span style="color:var(--red)">&#x29B8; ${esc(e.domain)}</span>
+      <span>${e.count}</span>
+    </div>`)
+    .join('')
 }
 
 // ── Categories ────────────────────────────────────────────────────────────────
@@ -190,8 +305,10 @@ function updateCategoryUI() {
   document.querySelectorAll('[id^="setting-"]').forEach(el => el.classList.remove('selected'))
   const row = document.getElementById('setting-' + checked)
   if (row) row.classList.add('selected')
-  document.getElementById('custom-cats').style.display = checked === 'custom' ? 'block' : 'none'
-  document.getElementById('cat-list-default').style.display = checked === 'default' ? 'block' : 'none'
+  const showHide = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? 'block' : 'none' }
+  showHide('cat-list-high',    checked === 'high')
+  showHide('cat-list-default', checked === 'default')
+  showHide('custom-cats',      checked === 'custom')
 }
 
 document.querySelectorAll('.radioLink').forEach(a => {
@@ -216,7 +333,7 @@ async function saveCategories() {
     safeSearch        = document.getElementById('cat-safesearch').checked
   }
   try {
-    await go().SaveContentSettings({ blockAdultContent, blockYouTube, safeSearch, blockImageSearch })
+    await go().SaveContentSettings('', { blockAdultContent, blockYouTube, safeSearch, blockImageSearch })
     notify('Category settings saved.', 'ok')
   } catch (e) { notify(String(e), 'err') }
 }
@@ -302,16 +419,24 @@ async function addKeyword() {
 async function removeKeyword(kw) {
   await go().RemoveKeyword(kw); loadKeywords(); notify('Keyword removed.')
 }
+async function saveKeywords() { notify('Custom keywords are saved automatically.', 'ok') }
 window.addKeyword = addKeyword
 window.removeKeyword = removeKeyword
+window.saveKeywords = saveKeywords
 document.getElementById('kw-input').addEventListener('keydown', e => { if (e.key === 'Enter') addKeyword() })
 
 // ── Safe Search ───────────────────────────────────────────────────────────────
+async function loadSafeSearch() {
+  const s = await go().GetContentSettings()
+  const cb = document.getElementById('cb-safesearch')
+  if (cb) cb.checked = s.safeSearch !== false
+}
+
 async function saveSafeSearch() {
   const on = document.getElementById('cb-safesearch').checked
   try {
     const s = await go().GetContentSettings()
-    await go().SaveContentSettings({ ...s, safeSearch: on })
+    await go().SaveContentSettings('', { ...s, safeSearch: on })
     notify('Safe Search setting saved.', 'ok')
   } catch (e) { notify(String(e), 'err') }
 }
@@ -349,11 +474,87 @@ async function saveAdvancedSettings() {
   const delay = parseInt(document.getElementById('setting-delay').value)
   try {
     const adv = await go().GetAdvancedSettings()
-    await go().SaveAdvancedSettings({ ...adv, disableDelayHours: delay })
+    await go().SaveAdvancedSettings('', { ...adv, disableDelayHours: delay })
     notify('Settings saved.', 'ok')
   } catch (e) { notify(String(e), 'err') }
 }
 window.saveAdvancedSettings = saveAdvancedSettings
+
+// ── Advanced page ─────────────────────────────────────────────────────────────
+async function loadAdvanced() {
+  if (!window.go?.main?.App) return
+  const [proxy, adv] = await Promise.all([go().GetProxySettings(), go().GetAdvancedSettings()])
+  const portEl = document.getElementById('adv-proxy-port')
+  const autoEl = document.getElementById('adv-autostart')
+  if (portEl) portEl.value = proxy.proxyPort
+  if (autoEl) autoEl.value = proxy.autoStart ? 'true' : 'false'
+}
+async function saveAdvanced() {
+  const port     = parseInt(document.getElementById('adv-proxy-port')?.value || 2372)
+  const autoStart = document.getElementById('adv-autostart')?.value === 'true'
+  try {
+    await go().SaveProxySettings({ proxyPort: port, autoStart })
+    notify('Advanced settings saved.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
+}
+async function installCA() {
+  const btn = document.getElementById('btn-install-ca')
+  const status = document.getElementById('ca-status')
+  btn.disabled = true
+  status.textContent = 'Installing…'
+  try {
+    await go().InstallCACert()
+    status.style.color = '#1a8a3a'
+    status.textContent = 'Trusted successfully. Restart your browser.'
+  } catch (e) {
+    status.style.color = '#cc3333'
+    status.textContent = String(e)
+  }
+  btn.disabled = false
+}
+
+window.loadAdvanced = loadAdvanced
+window.saveAdvanced = saveAdvanced
+window.installCA = installCA
+
+// ── Time Restrictions (frontend-only until backend is built) ──────────────────
+function toggleTimeRestrictions() {
+  const enabled = document.getElementById('cb-time-enabled')?.checked
+  const showHide = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? 'block' : 'none' }
+  showHide('time-schedule', enabled)
+  showHide('time-disabled-msg', !enabled)
+}
+window.toggleTimeRestrictions = toggleTimeRestrictions
+
+// ── Blocking Effects (frontend-only until backend is built) ───────────────────
+function loadBlockingEffects() {
+  const msgEl = document.getElementById('eff-custom-msg')
+  if (msgEl) msgEl.value = ''
+}
+async function saveBlockingEffects() {
+  const msg = document.getElementById('eff-custom-msg')?.value?.trim()
+  if (!window.go?.main?.App) { notify('Blocking effects saved (backend not yet implemented).', 'ok'); return }
+  try {
+    const adv = await go().GetAdvancedSettings()
+    await go().SaveAdvancedSettings('', { ...adv, blockedMessage: msg || adv.blockedMessage })
+    notify('Blocking effects saved.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
+}
+window.loadBlockingEffects = loadBlockingEffects
+window.saveBlockingEffects = saveBlockingEffects
+
+// ── K10 Update ────────────────────────────────────────────────────────────────
+async function loadUpdate() {
+  if (!window.go?.main?.App) return
+  const s = await go().GetStatus()
+  const dbEl = document.getElementById('upd-db-size')
+  if (dbEl) dbEl.innerHTML = `<strong>${s.dbDomains.toLocaleString()}</strong> domains, <strong>${s.dbUrls.toLocaleString()}</strong> URL patterns, <strong>${s.dbKeywords.toLocaleString()}</strong> keywords`
+}
+function checkForUpdate() {
+  notify('Update check requires backend support — see plan.md item 8.', 'ok')
+}
+window.loadUpdate = loadUpdate
+window.checkForUpdate = checkForUpdate
 
 // ── Uninstall ─────────────────────────────────────────────────────────────────
 async function showUninstall() {

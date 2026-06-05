@@ -1,0 +1,281 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#144985;--navy-dark:#0d3260;--navy-mid:#1a5ca8;--gold:#f0a500;--red:#cc3333;--green:#1a8a3a;--bg:#d4d0c8;--text:#222;--text-light:#555;--border:#b0b8c8}
+.k9{font-family:'Inter',system-ui,sans-serif;background:var(--bg);padding:4px}
+.k9-frame{background:#fff;border:1px solid #888;box-shadow:2px 2px 10px rgba(0,0,0,.2)}
+.ico{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ico svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.k9-header{background:#fff;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #c0c0c0}
+.k9-logo-area{display:flex;align-items:center;gap:10px}
+.k9-logo{width:54px;height:54px;border-radius:50%;object-fit:contain;}
+.k9-header h1{font-size:20px;font-weight:800;color:var(--navy);letter-spacing:-.3px}
+.k9-logout-btn{display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;color:var(--red);font-size:11px;font-weight:600;font-family:'Inter',sans-serif}
+.k9-logout-btn:hover{text-decoration:underline}
+
+.k9-topnav{background:linear-gradient(180deg,#2a6cb8,var(--navy),var(--navy-dark));display:flex;padding:0 6px}
+.k9-topnav button{background:none;border:none;color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:7px 14px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;transition:color .15s}
+.k9-topnav button:hover{color:#fff}
+.k9-topnav button.active{color:var(--gold)}
+.k9-topnav .ico{color:inherit}
+
+.k9-body{display:flex;min-height:380px}
+.k9-sidebar{width:185px;flex-shrink:0;background:#fff;border-right:1px solid #c0c0c0;display:flex;flex-direction:column}
+.k9-sidebar-head{background:linear-gradient(180deg,#2a6cb8,var(--navy));padding:14px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
+.k9-sidebar-head .sh-ico{color:var(--gold)}
+.k9-sidebar-head h3{color:#fff;font-size:13px;font-weight:800;letter-spacing:1.5px}
+.k9-sidebar-links{padding:4px 0;background:#fff;flex:1}
+.k9-sidebar-links button{width:100%;background:none;border:none;text-align:left;padding:5px 10px;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;border-left:3px solid transparent;transition:all .1s}
+.k9-sidebar-links button:hover{background:#e8f0fa}
+.k9-sidebar-links button.active{color:#8b0000;border-left-color:var(--gold);background:#faf8f4}
+.k9-sidebar-links button .ico{color:var(--text-light)}
+.k9-sidebar-links button.active .ico{color:#8b0000}
+
+.k9-content{flex:1;background:#fff;padding:12px 16px;overflow-y:auto}
+.view-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.view-header .ico{color:var(--navy)}
+.view-header h2{font-size:16px;font-weight:700;color:var(--navy)}
+.view-help{color:var(--navy-mid);font-size:10px;text-decoration:underline;cursor:pointer;margin-bottom:10px;display:block}
+
+.k9-footer-bar{background:linear-gradient(180deg,var(--navy-mid),var(--navy-dark));padding:5px 14px;display:flex;justify-content:flex-end;align-items:center}
+.brand-logo{display:flex;align-items:baseline;gap:0}
+.brand-k{font-family:'Inter',sans-serif;font-size:14px;font-weight:900;color:#fff;letter-spacing:.3px}
+.brand-star{color:var(--gold);font-size:12px;margin:0 2px}
+.brand-sub{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;color:#8bb8e8;letter-spacing:.5px;margin-left:3px}
+.k9-footer-copy{background:#e8e8e0;text-align:center;padding:3px;font-size:9px;color:var(--text-light);border-top:1px solid #c0c0c0}
+
+.k9-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;font-size:11px;font-weight:600;background:#f4f4f0;border:1px solid #a0a0a0;cursor:pointer;color:#333;font-family:'Inter',sans-serif;transition:background .1s}
+.k9-btn:hover{background:#e0e0d8}
+.btn-row{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+
+.dash-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.dash-card{border:1px solid var(--border);padding:8px 10px}
+.dash-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.dash-card-title{font-size:9px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.5px}
+.dash-card .ico{color:var(--border)}
+.dash-card-value{font-size:22px;font-weight:900;color:var(--navy);line-height:1}
+.dash-card-sub{font-size:9px;color:#999;margin-top:2px}
+.dash-card.warn .dash-card-value{color:var(--red)}
+.dash-card.highlight .dash-card-value{color:#c04400}
+
+.dash-split{display:flex;gap:12px;margin-bottom:8px}
+.dash-col{flex:1}
+.dash-section-title{font-size:10px;font-weight:800;color:var(--navy);margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid var(--navy);text-transform:uppercase;letter-spacing:.5px}
+.prot-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid #eef0f4;font-size:11px}
+.prot-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.prot-dot.on{background:var(--green);box-shadow:0 0 4px rgba(26,138,58,.4)}
+.prot-dot.off{background:var(--red);box-shadow:0 0 4px rgba(204,51,51,.3)}
+.prot-label{flex:1;font-weight:600;color:#333}
+.prot-val{font-weight:700;font-size:10px}
+.prot-val.active{color:var(--green)}
+.prot-val.inactive{color:var(--red)}
+.dash-db{display:flex;gap:4px;margin-bottom:8px}
+.dash-db-chip{flex:1;background:#f0f4fa;border:1px solid var(--border);padding:6px;text-align:center}
+.dash-db-num{font-size:13px;font-weight:900;color:var(--navy)}
+.dash-db-label{font-size:7px;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.dash-bar-row{display:flex;align-items:center;gap:4px;margin-bottom:3px;font-size:10px}
+.dash-bar-label{width:65px;text-align:right;color:var(--text-light);font-weight:600;flex-shrink:0}
+.dash-bar-track{flex:1;height:11px;background:#eef0f4;border:1px solid #d0d4dc;overflow:hidden}
+.dash-bar-fill{height:100%}
+.dash-bar-val{width:30px;font-weight:700;color:#333;font-size:10px}
+.dash-recent{margin-top:2px}
+.dash-recent-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f0f0f0;font-size:10px}
+.dash-recent-time{width:42px;color:#999;font-weight:500;flex-shrink:0;font-variant-numeric:tabular-nums}
+.dash-recent-url{flex:1;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-recent-cat{font-size:9px;font-weight:600;padding:1px 5px;border-radius:2px;flex-shrink:0}
+.cat-porn{background:#fde8e8;color:#991b1b}
+.cat-malware{background:#fef3e2;color:#92400e}
+.cat-phish{background:#fefce8;color:#854d0e}
+.cat-gamble{background:#e8f0fe;color:#1e40af}
+.cat-violence{background:#f3e8fe;color:#6b21a8}
+.dash-quick-actions{display:flex;gap:6px;margin-top:8px}
+.dash-action-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px;background:#f4f7fb;border:1px solid var(--border);cursor:pointer;font-size:10px;font-weight:600;color:var(--navy);font-family:'Inter',sans-serif;transition:background .1s}
+.dash-action-btn:hover{background:#e0ecfa}
+.dash-action-btn .ico{color:var(--navy)}
+
+.exc-split{display:flex;gap:10px}
+.exc-box{flex:1;border:1px solid #a0a0a0}
+.exc-head{padding:3px 8px;border-bottom:1px solid #c0c0c0}
+.exc-head.block-head{background:#fdf6f6}
+.exc-head.block-head .exc-title{color:#8b0000;font-size:12px;font-weight:700}
+.exc-head.block-head .exc-sub{color:#8b0000;font-size:9px;font-weight:600;margin-left:4px}
+.exc-head.allow-head{background:#f0faf0}
+.exc-head.allow-head .exc-title{color:var(--green);font-size:12px;font-weight:700}
+.exc-head.allow-head .exc-sub{color:var(--green);font-size:9px;font-weight:600;margin-left:4px}
+.exc-body{padding:8px}
+.exc-body label{font-size:11px;font-weight:600;color:#000;display:block;margin-bottom:3px}
+.exc-body input[type=text]{width:100%;border:1px solid #888;padding:3px 5px;font-size:11px;margin-bottom:4px;font-family:'Inter',sans-serif}
+.exc-add{display:flex;align-items:center;gap:3px;background:none;border:none;font-size:11px;color:var(--green);font-weight:700;cursor:pointer;float:right;font-family:'Inter',sans-serif}
+.exc-list{clear:both;margin-top:8px;min-height:30px;font-size:10px;color:#888}
+.exc-item{display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #e0e0e0;color:var(--text);font-size:11px}
+.exc-item button{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700}
+.blacklist-row{margin-top:8px;padding:6px;border:2px solid var(--red);background:#fff8f8;display:flex;align-items:center;gap:6px;font-size:10px;color:#333}
+.cat-item{padding:5px 8px;border-bottom:1px solid #e8e8e8;cursor:pointer;display:flex;align-items:flex-start;gap:6px;font-size:11px}
+.cat-item:hover{background:#f0f4fa}
+.cat-item.sel{background:#faf6f0}
+.cat-item input{margin-top:2px}
+.cat-label{font-weight:700;color:#c04400}
+.cat-label.blue{color:var(--navy)}
+.cat-desc{color:var(--text-light);font-size:10px}
+.cat-expand{background:#fff;border:1px solid #a0a0a0;margin-top:4px;padding:6px 8px}
+.cat-expand-title{font-size:11px;font-weight:700;margin-bottom:4px}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px 6px;font-size:10px}
+.cat-grid span{color:#333;padding:1px 0}
+.time-row{display:flex;align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid #eee;font-size:11px}
+.time-row label{width:70px;font-weight:600}
+.time-input{border:1px solid #999;padding:2px 4px;font-size:10px;width:64px;font-family:'Inter',sans-serif}
+.adv-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #eee;font-size:11px}
+.adv-row label{font-weight:600;color:#333}
+.adv-row select,.adv-row input{border:1px solid #999;padding:2px 5px;font-size:11px;font-family:'Inter',sans-serif}
+.pw-form{max-width:320px}
+.pw-field{margin-bottom:6px}
+.pw-field label{display:block;font-size:11px;font-weight:600;margin-bottom:2px}
+.pw-field input{width:100%;border:1px solid #999;padding:3px 5px;font-size:11px;font-family:'Inter',sans-serif}
+.upd-section{margin-bottom:10px}
+.upd-section h3{font-size:12px;font-weight:700;color:var(--navy);border-bottom:1px solid #d0d0d0;padding-bottom:2px;margin-bottom:4px}
+.upd-info{font-size:11px;color:#333;line-height:1.5}
+.upd-check-btn{display:inline-flex;align-items:center;gap:5px;background:var(--navy);color:#fff;border:none;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif}
+.eff-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #eee;font-size:11px}
+.eff-row label{font-weight:600;color:#333}
+.eff-row select{font-family:'Inter',sans-serif}
+.act-wrap{display:flex;gap:10px;margin-bottom:10px}
+.act-col{flex:1;border:1px solid #a0a0a0}
+.act-col-head{background:var(--navy);color:#fff;padding:3px 8px;font-size:11px;font-weight:700;display:flex;justify-content:space-between}
+.act-row{display:flex;justify-content:space-between;padding:3px 8px;font-size:11px;border-bottom:1px solid #e0e0e0}
+.act-row:nth-child(even){background:#f0f4fa}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{background:var(--navy);color:#fff;text-align:left;padding:3px 6px;font-weight:700}
+.tbl td{padding:3px 6px;border:1px solid #c0c8d8}
+.tbl tr:nth-child(even) td{background:#f0f4fa}
+.kw-entry{display:flex;gap:5px;margin-bottom:5px}
+.kw-entry input{flex:1;border:1px solid #999;padding:3px 5px;font-size:11px;font-family:'Inter',sans-serif}
+.kw-item{display:flex;justify-content:space-between;align-items:center;padding:2px 6px;background:#f4f7fb;border:1px solid #d0d8e4;margin-bottom:2px;font-size:11px}
+.kw-item button{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;font-weight:700}
+.ss-row{display:flex;align-items:center;gap:6px;padding:5px 0;font-size:11px;font-weight:600;border-bottom:1px solid #eee}
+</style>
+
+<div class="k9" id="app"></div>
+
+<script>
+var LOGO="data:image/webp;base64,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";
+
+function I(name,s){s=s||16;var p={home:'<path d="M3 12l9-9 9 9"/><path d="M5 10v10h5v-6h4v6h5V10"/>',chart:'<rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/>',wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5" fill="currentColor" stroke="none"/>',globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',ban:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>',key:'<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',sliders:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',power:'<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',check:'<polyline points="20 6 9 17 4 12"/>',x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'};return '<span class="ico"><svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24">'+p[name]+'</svg></span>';}
+
+var mainTab='HOME',subTab='',alwaysBlock=['malware-download.ru','fakesite.net','bad-content.xyz'],alwaysAllow=['google.com','github.com'],keywords=['casino','proxy','torrent'],catLevel='default',timeEnabled=false,blacklistNoPw=false;
+var setupItems=[{id:'CATEGORIES',ico:'globe',label:'Web Categories to Block'},{id:'TIME',ico:'clock',label:'Time Restrictions'},{id:'EXCEPTIONS',ico:'flag',label:'Web Site Exceptions'},{id:'EFFECTS',ico:'ban',label:'Blocking Effects'},{id:'KEYWORDS',ico:'key',label:'URL Keywords'},{id:'SAFESEARCH',ico:'search',label:'Safe Search'},{id:'ADVANCED',ico:'sliders',label:'Advanced'},{id:'PASSWORD',ico:'lock',label:'Password/Email'},{id:'UPDATE',ico:'download',label:'K10 Update'}];
+var actItems=[{id:'SUMMARY',ico:'chart',label:'View Activity Summary'}];
+
+function render(){
+  var h='<div class="k9-frame">';
+  h+='<div class="k9-header"><div class="k9-logo-area"><img class="k9-logo" src="'+LOGO+'" alt="K10"><h1>K10 Web Protection Administration</h1></div><button class="k9-logout-btn">'+I('power',14)+' Logout</button></div>';
+  h+='<div class="k9-topnav">'+navBtn('HOME','home','HOME')+navBtn('ACTIVITY','chart','VIEW INTERNET ACTIVITY')+navBtn('SETUP','wrench','SETUP')+navBtn('HELP','help','GET HELP')+'</div>';
+  h+='<div class="k9-body">';
+  if(mainTab==='SETUP'||mainTab==='ACTIVITY'){
+    var items=mainTab==='SETUP'?setupItems:actItems,ico=mainTab==='SETUP'?'wrench':'chart',ti=mainTab==='SETUP'?'SETUP':'ACTIVITY';
+    h+='<div class="k9-sidebar"><div class="k9-sidebar-head"><span class="sh-ico">'+I(ico,28)+'</span><h3>'+ti+'</h3></div><div class="k9-sidebar-links">';
+    items.forEach(function(it){h+='<button class="'+(subTab===it.id?'active':'')+'" onclick="navSub(\''+it.id+'\')">'+I(it.ico,14)+it.label+'</button>';});
+    h+='</div></div>';}
+  h+='<div class="k9-content">';
+  var views={HOME:homeView,HELP:helpView,EXCEPTIONS:exceptionsView,CATEGORIES:categoriesView,TIME:timeView,EFFECTS:effectsView,KEYWORDS:keywordsView,SAFESEARCH:safeSearchView,ADVANCED:advancedView,PASSWORD:passwordView,UPDATE:updateView,SUMMARY:activityView};
+  h+=(views[mainTab==='HOME'||mainTab==='HELP'?mainTab:subTab]||function(){return ''})();
+  h+='</div></div>';
+  h+='<div class="k9-footer-bar"><div class="brand-logo"><span class="brand-k">K10</span><span class="brand-star">★</span><span class="brand-sub">WebProtection</span></div></div>';
+  h+='<div class="k9-footer-copy">Copyright © 2024-2026 K10WebProtection — All Rights Reserved.</div></div>';
+  document.getElementById('app').innerHTML=h;
+}
+function navBtn(t,ico,l){return '<button class="'+(mainTab===t?'active':'')+'" onclick="navMain(\''+t+'\')">'+I(ico,14)+' '+l+'</button>';}
+function navMain(t){mainTab=t;subTab=t==='SETUP'?'CATEGORIES':t==='ACTIVITY'?'SUMMARY':'';render();}
+function navSub(s){subTab=s;render();}
+
+function homeView(){
+  return '<div class="view-header">'+I('home',20)+'<h2>Dashboard</h2></div>'+
+  '<div class="dash-grid">'+
+    '<div class="dash-card warn"><div class="dash-card-header"><span class="dash-card-title">Blocked Today</span>'+I('ban',14)+'</div><div class="dash-card-value">427</div><div class="dash-card-sub">Threats intercepted</div></div>'+
+    '<div class="dash-card"><div class="dash-card-header"><span class="dash-card-title">Total Blocked</span>'+I('shield',14)+'</div><div class="dash-card-value">18,293</div><div class="dash-card-sub">Since installation</div></div>'+
+    '<div class="dash-card highlight"><div class="dash-card-header"><span class="dash-card-title">Filter Level</span>'+I('sliders',14)+'</div><div class="dash-card-value" style="font-size:20px">Default</div><div class="dash-card-sub">18 categories blocked</div></div>'+
+    '<div class="dash-card"><div class="dash-card-header"><span class="dash-card-title">Exceptions</span>'+I('flag',14)+'</div><div class="dash-card-value" style="font-size:16px">'+alwaysAllow.length+' <span style="font-size:9px;color:#888">allow</span>  '+alwaysBlock.length+' <span style="font-size:9px;color:#888">block</span></div><div class="dash-card-sub">Custom rules active</div></div>'+
+  '</div>'+
+  '<div class="dash-split">'+
+    '<div class="dash-col">'+
+      '<div class="dash-section-title">Protection Modules</div>'+
+      '<div class="prot-row"><div class="prot-dot on"></div><span class="prot-label">Web Protection</span><span class="prot-val active">Active</span></div>'+
+      '<div class="prot-row"><div class="prot-dot on"></div><span class="prot-label">Malware Protection</span><span class="prot-val active">Active</span></div>'+
+      '<div class="prot-row"><div class="prot-dot on"></div><span class="prot-label">Safe Search Enforcement</span><span class="prot-val active">Active</span></div>'+
+      '<div class="prot-row"><div class="prot-dot on"></div><span class="prot-label">HTTPS Filtering</span><span class="prot-val active">Active</span></div>'+
+      '<div class="prot-row"><div class="prot-dot on"></div><span class="prot-label">DNS Protection</span><span class="prot-val active">Active</span></div>'+
+      '<div class="dash-section-title" style="margin-top:8px">Top Blocked Categories</div>'+
+      barRow('Pornography',312,'#991b1b',400)+barRow('Malware',47,'#92400e',400)+barRow('Gambling',38,'#1e40af',400)+barRow('Phishing',21,'#854d0e',400)+barRow('Violence',9,'#6b21a8',400)+
+    '</div>'+
+    '<div class="dash-col">'+
+      '<div class="dash-section-title">Built-in Database</div>'+
+      '<div class="dash-db">'+
+        '<div class="dash-db-chip"><div class="dash-db-num">24,233</div><div class="dash-db-label">Domains</div></div>'+
+        '<div class="dash-db-chip"><div class="dash-db-num">4,227</div><div class="dash-db-label">URL Patterns</div></div>'+
+        '<div class="dash-db-chip"><div class="dash-db-num">10,527</div><div class="dash-db-label">Keywords</div></div>'+
+      '</div>'+
+      '<div class="dash-section-title" style="margin-top:8px">Recent Blocked Activity</div>'+
+      '<div class="dash-recent">'+
+        recentRow('14:32','xxxvideos.example.com/page','Pornography','cat-porn')+
+        recentRow('14:28','free-slots-casino.net','Gambling','cat-gamble')+
+        recentRow('14:15','download-trojan.ru/file.exe','Malware','cat-malware')+
+        recentRow('13:58','phishing-bank.com/login','Phishing','cat-phish')+
+        recentRow('13:41','adult-content.example.org','Pornography','cat-porn')+
+        recentRow('13:22','hate-speech-forum.net/thread','Violence','cat-violence')+
+        recentRow('12:55','fake-antivirus.com/scan','Malware','cat-malware')+
+      '</div>'+
+    '</div>'+
+  '</div>'+
+  '<div class="dash-quick-actions">'+
+    '<div class="dash-action-btn" onclick="navMain(\'ACTIVITY\')">'+I('chart',12)+' View Activity</div>'+
+    '<div class="dash-action-btn" onclick="navMain(\'SETUP\')">'+I('wrench',12)+' Setup Filters</div>'+
+    '<div class="dash-action-btn" onclick="alert(\'All modules verified.\')">'+I('shield',12)+' Verify Protection</div>'+
+  '</div>';
+}
+function barRow(l,v,c,m){var p=Math.round(v/m*100);return '<div class="dash-bar-row"><span class="dash-bar-label">'+l+'</span><div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+p+'%;background:'+c+'"></div></div><span class="dash-bar-val">'+v+'</span></div>';}
+function recentRow(t,u,cat,cls){return '<div class="dash-recent-row"><span class="dash-recent-time">'+t+'</span><span class="dash-recent-url">'+u+'</span><span class="dash-recent-cat '+cls+'">'+cat+'</span></div>';}
+
+function exceptionsView(){
+  var bI=alwaysBlock.map(function(u,i){return '<div class="exc-item"><span>'+u+'</span><button onclick="alwaysBlock.splice('+i+',1);render()">'+I('x',12)+'</button></div>';}).join('');
+  var aI=alwaysAllow.map(function(u,i){return '<div class="exc-item"><span>'+u+'</span><button onclick="alwaysAllow.splice('+i+',1);render()">'+I('x',12)+'</button></div>';}).join('');
+  return '<div class="view-header">'+I('flag',20)+'<h2>Web Site Exceptions</h2></div><span class="view-help">Create lists of Web sites to always block or always allow. More Help . . .</span>'+
+    '<div class="exc-split"><div class="exc-box"><div class="exc-head block-head"><span class="exc-title">Always Block</span><span class="exc-sub">Block regardless of category</span></div><div class="exc-body"><label>Web Site to Add:</label><input type="text" id="block-url" placeholder="Enter a URL"><button class="exc-add" onclick="addExc(\'block\')">'+I('plus',12)+' Add to List</button><div class="exc-list">'+(bI||'<em>No entries</em>')+'</div></div></div>'+
+    '<div class="exc-box"><div class="exc-head allow-head"><span class="exc-title">Always Allow</span><span class="exc-sub">Allow regardless of category</span></div><div class="exc-body"><label>Web Site to Add:</label><input type="text" id="allow-url" placeholder="Enter a URL"><button class="exc-add" onclick="addExc(\'allow\')">'+I('plus',12)+' Add to List</button><div class="exc-list">'+(aI||'<em>No entries</em>')+'</div></div></div></div>'+
+    '<div class="blacklist-row"><input type="checkbox" id="blnp"'+(blacklistNoPw?' checked':'')+' onchange="blacklistNoPw=this.checked"> <label for="blnp"><strong>Blacklist Without Password</strong> — Allow adding sites without admin password.</label></div>'+
+    '<div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';
+}
+function addExc(t){var id=t==='block'?'block-url':'allow-url',el=document.getElementById(id);if(!el||!el.value.trim())return;if(t==='block')alwaysBlock.push(el.value.trim());else alwaysAllow.push(el.value.trim());render();}
+
+function categoriesView(){
+  var allC=['Abortion','Adult / Mature Content','Alcohol','Alternative Sexuality','Alternative Spirituality','Chat / IM','Extreme','Gambling','Hacking','Illegal / Questionable','Illegal Drugs','Intimate Apparel','LGBT','Newsgroups / Forums','Nudity','Open Image Search','P2P','Personal Pages','Personals / Dating','Phishing','Pornography','Proxy Avoidance','Sex Education','Social Networking','Spyware / Malware','Spyware Effects','Suspicious','Tobacco','Unrated','Violence / Hate','Weapons'];
+  var defC=['Abortion','Adult / Mature Content','Alternative Sexuality','Extreme','Gambling','Hacking','Illegal / Questionable','Illegal Drugs','Intimate Apparel','Nudity','Personals / Dating','Phishing','Pornography','Proxy Avoidance','Sex Education','Spyware / Malware','Suspicious','Violence / Hate'];
+  var levels=[{id:'high',label:'High',desc:'All default categories plus chat, newsgroups, unrated.',cats:allC},{id:'default',label:'Default',desc:'Adult content, security threats, illegal activity, sexually-related.',cats:defC},{id:'moderate',label:'Moderate',desc:'Adult content, security threats, illegal activity.'},{id:'minimal',label:'Minimal',desc:'Pornography and security threats only.'},{id:'monitor',label:'Monitor',desc:'Allows all — logs traffic only.'},{id:'custom',label:'Custom',desc:'Select your own categories.',cats:allC,custom:true}];
+  var html='<div class="view-header">'+I('globe',20)+'<h2>Web Categories to Block</h2></div><span class="view-help">Set the categories to block or allow. More Help . . .</span>';
+  levels.forEach(function(lv){var sel=catLevel===lv.id,lc=(lv.id==='high'||lv.id==='default')?'cat-label':'cat-label blue';
+    html+='<div class="cat-item'+(sel?' sel':'')+'" onclick="catLevel=\''+lv.id+'\';render()"><input type="radio"'+(sel?' checked':'')+'><div style="flex:1"><span class="'+lc+'">'+lv.label+'</span> <span class="cat-desc">'+lv.desc+'</span>';
+    if(sel&&lv.cats){html+='<div class="cat-expand">';if(lv.custom){html+='<div class="cat-expand-title">Select categories:</div><div class="cat-grid">';lv.cats.forEach(function(c){html+='<label style="font-size:10px;display:flex;align-items:center;gap:3px"><input type="checkbox" onclick="event.stopPropagation()"> '+c+'</label>';});}else{html+='<div class="cat-expand-title">Currently blocked:</div><div class="cat-grid">';lv.cats.forEach(function(c){html+='<span>'+c+'</span>';});}html+='</div></div>';}
+    html+='</div></div>';});
+  html+='<div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';return html;
+}
+function timeView(){var days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];var html='<div class="view-header">'+I('clock',20)+'<h2>Time Restrictions</h2></div><span class="view-help">Set allowed Internet hours. More Help . . .</span><div style="margin-bottom:8px;font-size:11px"><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox"'+(timeEnabled?' checked':'')+' onchange="timeEnabled=this.checked;render()"> <strong>Enable time restrictions</strong></label></div>';if(timeEnabled){html+='<div style="border:1px solid #a0a0a0;padding:8px;background:#fafafa;max-width:400px">';days.forEach(function(d){html+='<div class="time-row"><label>'+d+'</label><input type="time" class="time-input" value="08:00"> <span style="font-size:10px;color:#666">to</span> <input type="time" class="time-input" value="22:00"> <input type="checkbox" checked style="margin-left:4px"></div>';});html+='</div>';}else html+='<div style="font-size:11px;color:#888;padding:6px 0">Disabled. Enable above to configure.</div>';html+='<div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';return html;}
+function effectsView(){return '<div class="view-header">'+I('ban',20)+'<h2>Blocking Effects</h2></div><span class="view-help">Configure blocked site behavior. More Help . . .</span><div style="max-width:400px"><div class="eff-row"><label>Block page display:</label><select><option>K10 Block Page</option><option>Blank Page</option><option>Custom Message</option></select></div><div class="eff-row"><label>Audio alert:</label><select><option>No</option><option>Yes</option></select></div><div class="eff-row"><label>System tray icon:</label><select><option>Yes</option><option>No</option></select></div><div class="eff-row"><label>Admin link on block page:</label><select><option>Yes</option><option>No</option></select></div></div><div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';}
+function keywordsView(){var items=keywords.map(function(k,i){return '<div class="kw-item"><span>'+k+'</span><button onclick="keywords.splice('+i+',1);render()">'+I('x',11)+'</button></div>';}).join('');return '<div class="view-header">'+I('key',20)+'<h2>URL Keywords</h2></div><span class="view-help">Block URLs containing keywords. More Help . . .</span><div class="kw-entry"><input type="text" id="kw-in" placeholder="Enter keyword…"><button class="k9-btn" onclick="addKw()">'+I('plus',12)+' Add</button></div><div style="margin-top:4px">'+(items||'<div style="font-size:10px;color:#888">No keywords.</div>')+'</div><div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';}
+function addKw(){var el=document.getElementById('kw-in');if(el&&el.value.trim()){keywords.push(el.value.trim());render();}}
+function safeSearchView(){return '<div class="view-header">'+I('search',20)+'<h2>Safe Search</h2></div><span class="view-help">Force safe search on search engines.</span><div style="max-width:400px"><div class="ss-row"><input type="checkbox" checked> <label>Force Google SafeSearch</label></div><div class="ss-row"><input type="checkbox" checked> <label>Force Bing SafeSearch</label></div><div class="ss-row"><input type="checkbox" checked> <label>Force Yahoo SafeSearch</label></div><div class="ss-row"><input type="checkbox"> <label>Force YouTube Restricted Mode</label></div></div><div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';}
+function advancedView(){return '<div class="view-header">'+I('sliders',20)+'<h2>Advanced</h2></div><span class="view-help">Proxy and logging settings.</span><div style="max-width:400px"><div class="adv-row"><label>Proxy Port</label><input type="number" value="2372" style="width:70px"></div><div class="adv-row"><label>Logging Level</label><select><option>Basic</option><option>None</option><option>Full</option></select></div><div class="adv-row"><label>Real-time Categorization</label><select><option>Enabled</option><option>Disabled</option></select></div><div class="adv-row"><label>Override with admin password</label><select><option>No</option><option>Yes</option></select></div><div class="adv-row"><label>Timeout (sec)</label><input type="number" value="30" style="width:70px"></div></div><div class="btn-row"><button class="k9-btn" onclick="alert(\'Saved!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';}
+function passwordView(){return '<div class="view-header">'+I('lock',20)+'<h2>Password/Email</h2></div><span class="view-help">Change admin password and recovery email.</span><div class="pw-form"><div class="pw-field"><label>Current Password:</label><input type="password"></div><div class="pw-field"><label>New Password:</label><input type="password"></div><div class="pw-field"><label>Confirm:</label><input type="password"></div><hr style="border:none;border-top:1px solid #c0c0c0;margin:8px 0"><div class="pw-field"><label>Recovery Email:</label><input type="email" value="admin@k10webprotection.com"></div></div><div class="btn-row"><button class="k9-btn" onclick="alert(\'Updated!\')">'+I('check',12)+' Save</button><button class="k9-btn" onclick="render()">'+I('x',12)+' Cancel</button></div>';}
+function updateView(){return '<div class="view-header">'+I('download',20)+'<h2>K10 Update</h2></div><div class="upd-section"><h3>Current Version</h3><div class="upd-info">Version: <strong>4.1.0</strong> · Database: <strong>24,233 domains</strong> · Released: <strong>2026-06-01</strong></div></div><div class="upd-section"><h3>Check for Updates</h3><div class="upd-info">Check K10WebProtection servers for latest definitions.</div><button class="upd-check-btn" onclick="alert(\'Up to date!\')">'+I('download',12)+' Check Now</button></div><div class="upd-section"><h3>Automatic Updates</h3><div class="upd-info"><label style="font-size:11px;display:flex;align-items:center;gap:5px"><input type="checkbox" checked> Auto-download updates</label></div></div>';}
+function activityView(){
+  return '<div class="view-header">'+I('chart',20)+'<h2>Activity Summary</h2></div><span class="view-help">Web activity on your computer. More Help . . .</span>'+
+    '<div class="act-wrap"><div class="act-col"><div class="act-col-head"><span>Category</span><span>Hits</span></div>'+
+      '<div class="act-row"><span>Pornography</span><span>312</span></div><div class="act-row"><span>Malware</span><span>47</span></div><div class="act-row"><span>Gambling</span><span>38</span></div><div class="act-row"><span>Phishing</span><span>21</span></div><div class="act-row"><span>Violence / Hate</span><span>9</span></div>'+
+    '</div><div class="act-col"><div class="act-col-head"><span>General</span><span>Count</span></div>'+
+      '<div class="act-row"><span>URL Requests</span><span>14,892</span></div><div class="act-row"><span>Blocked by Category</span><span>418</span></div><div class="act-row"><span>Blocked by Keyword</span><span>9</span></div><div class="act-row"><span>Always Block list</span><span>3</span></div><div class="act-row"><span>Always Allow list</span><span>247</span></div>'+
+    '</div></div>'+
+    '<div class="dash-section-title" style="margin-top:10px">Recent Blocked Sites</div><div class="dash-recent">'+
+      recentRow('14:32','xxxvideos.example.com/page','Pornography','cat-porn')+recentRow('14:28','free-slots-casino.net','Gambling','cat-gamble')+recentRow('14:15','download-trojan.ru/file.exe','Malware','cat-malware')+recentRow('13:58','phishing-bank.com/login','Phishing','cat-phish')+recentRow('13:41','adult-content.example.org','Pornography','cat-porn')+recentRow('13:22','hate-speech-forum.net/thread','Violence','cat-violence')+recentRow('12:55','fake-antivirus.com/scan','Malware','cat-malware')+recentRow('12:30','poker-online.net/play','Gambling','cat-gamble')+'</div>';
+}
+function helpView(){return '<div class="view-header">'+I('help',20)+'<h2>Get Help</h2></div><div style="font-size:12px;line-height:1.6;color:#333;max-width:460px"><p style="margin-bottom:8px">For assistance with K10 Web Protection, visit the support resources below.</p><table class="tbl"><tbody><tr><td><strong>User Guide</strong></td><td><a href="#" style="color:#1a5ca8">Download PDF</a></td></tr><tr><td><strong>Knowledge Base</strong></td><td><a href="#" style="color:#1a5ca8">Browse</a></td></tr><tr><td><strong>Forum</strong></td><td><a href="#" style="color:#1a5ca8">Visit</a></td></tr><tr><td><strong>Email</strong></td><td><a href="#" style="color:#1a5ca8">support@k10webprotection.com</a></td></tr><tr><td><strong>Version</strong></td><td>K10 Web Protection v4.1.0</td></tr></tbody></table></div>';}
+render();
+</script>

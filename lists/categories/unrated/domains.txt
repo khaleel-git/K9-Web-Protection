@@ -1,0 +1,2 @@
+# Unrated domains are determined dynamically based on DNS/category lookup failures.
+# This file serves as a placeholder. The proxy will block unrated sites in High mode.

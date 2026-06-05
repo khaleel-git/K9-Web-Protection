@@ -16,8 +16,9 @@ type Stats struct {
 }
 
 type BlockedEntry struct {
-	Domain string `json:"domain"`
-	Count  int    `json:"count"`
+	Domain   string    `json:"domain"`
+	Count    int       `json:"count"`
+	LastSeen time.Time `json:"lastSeen"`
 }
 
 type Config struct {
@@ -230,19 +231,45 @@ func (c *Config) UserKeywordMatch(url string) bool {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
+// dedupWindow: multiple requests from the same page load all arrive within
+// a few hundred milliseconds. Skip counting the same domain again if it was
+// already counted within this window — one visit = one count.
+const dedupWindow = 5 * time.Second
+
 func (c *Config) IncrementBlocked(domain string) {
-	c.mu.Lock(); defer c.mu.Unlock()
-	c.Stats.TotalBlocked++
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	now := time.Now()
 	if now.Year() != c.Stats.LastReset.Year() || now.YearDay() != c.Stats.LastReset.YearDay() {
-		c.Stats.BlockedToday = 0; c.Stats.LastReset = now
+		c.Stats.BlockedToday = 0
+		c.Stats.LastReset = now
 	}
-	c.Stats.BlockedToday++
+
 	for i, e := range c.Stats.TopBlocked {
-		if e.Domain == domain { c.Stats.TopBlocked[i].Count++; return }
+		if e.Domain == domain {
+			if now.Sub(e.LastSeen) < dedupWindow {
+				return // same page-load burst — skip
+			}
+			c.Stats.TopBlocked[i].Count++
+			c.Stats.TopBlocked[i].LastSeen = now
+			c.Stats.TotalBlocked++
+			c.Stats.BlockedToday++
+			// Move to front so the list stays newest-first
+			entry := c.Stats.TopBlocked[i]
+			c.Stats.TopBlocked = append(c.Stats.TopBlocked[:i], c.Stats.TopBlocked[i+1:]...)
+			c.Stats.TopBlocked = append([]BlockedEntry{entry}, c.Stats.TopBlocked...)
+			return
+		}
 	}
-	c.Stats.TopBlocked = append(c.Stats.TopBlocked, BlockedEntry{Domain: domain, Count: 1})
-	if len(c.Stats.TopBlocked) > 10 { c.Stats.TopBlocked = c.Stats.TopBlocked[:10] }
+
+	// New domain — prepend so newest is always first
+	c.Stats.TotalBlocked++
+	c.Stats.BlockedToday++
+	c.Stats.TopBlocked = append([]BlockedEntry{{Domain: domain, Count: 1, LastSeen: now}}, c.Stats.TopBlocked...)
+	if len(c.Stats.TopBlocked) > 20 {
+		c.Stats.TopBlocked = c.Stats.TopBlocked[:20]
+	}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

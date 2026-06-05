@@ -11,7 +11,67 @@ const (
 	hostsFile   = "/etc/hosts"
 	markerStart = "# K9-Web-Protection START"
 	markerEnd   = "# K9-Web-Protection END"
+
+	ssMarkerStart = "# K9-SafeSearch START"
+	ssMarkerEnd   = "# K9-SafeSearch END"
 )
+
+// SafeSearch enforcement IPs published by Google / Microsoft for parental controls.
+// Redirecting to these IPs causes their servers to enforce strict SafeSearch
+// regardless of the user's browser or account preference.
+var safeSearchEntries = [][2]string{
+	// Google — forcesafesearch.google.com
+	{"216.239.38.120", "www.google.com"},
+	{"216.239.38.120", "google.com"},
+	// YouTube Restricted
+	{"216.239.38.119", "www.youtube.com"},
+	{"216.239.38.119", "m.youtube.com"},
+	{"216.239.38.119", "youtubei.googleapis.com"},
+	{"216.239.38.119", "youtube.googleapis.com"},
+	{"216.239.38.119", "www.youtube-nocookie.com"},
+	// Bing — strict.bing.com
+	{"204.79.197.220", "www.bing.com"},
+	{"204.79.197.220", "bing.com"},
+}
+
+// SetSafeSearch adds or removes the SafeSearch enforcement entries in /etc/hosts.
+func SetSafeSearch(enabled bool) error {
+	content, err := readHosts()
+	if err != nil {
+		return err
+	}
+
+	// Always strip existing SafeSearch section first
+	if strings.Contains(content, ssMarkerStart) {
+		start := strings.Index(content, ssMarkerStart)
+		end := strings.Index(content, ssMarkerEnd) + len(ssMarkerEnd)
+		content = strings.TrimRight(content[:start], "\n") + "\n" +
+			strings.TrimLeft(content[end:], "\n")
+	}
+
+	if !enabled {
+		return writeWithPrivileges(content)
+	}
+
+	var block strings.Builder
+	block.WriteString("\n" + ssMarkerStart + "\n")
+	for _, e := range safeSearchEntries {
+		block.WriteString(e[0] + " " + e[1] + "\n")
+	}
+	block.WriteString(ssMarkerEnd + "\n")
+
+	newContent := strings.TrimRight(content, "\n") + block.String()
+	return writeWithPrivileges(newContent)
+}
+
+// IsSafeSearchActive returns true if the SafeSearch hosts entries are present.
+func IsSafeSearchActive() bool {
+	content, err := readHosts()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(content, ssMarkerStart)
+}
 
 // readHosts reads /etc/hosts — tries direct read first, falls back to `cat`
 // in case the Wails sandbox restricts direct file access.

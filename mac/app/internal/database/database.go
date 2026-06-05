@@ -19,25 +19,38 @@ func init() {
 }
 
 // Database holds the three built-in lists.
+// domains is a hash set for O(1) exact + subdomain lookup.
+// urls and keywords stay as slices (substring search, no map shortcut).
 type Database struct {
-	domains  []string // pure hostnames  e.g. "pornhub.com"
-	urls     []string // URL fragments    e.g. "reddit.com/r/nsfw"
-	keywords []string // keyword phrases  e.g. "anal porn"
+	domainSet map[string]struct{} // exact hostnames, lowercased
+	domains   []string            // same entries as domainSet, kept for DomainCount
+	urls      []string            // URL fragments   e.g. "reddit.com/r/nsfw"
+	keywords  []string            // keyword phrases e.g. "anal porn"
 }
 
 func (d *Database) DomainCount()  int { return len(d.domains) }
 func (d *Database) URLCount()     int { return len(d.urls) }
 func (d *Database) KeywordCount() int { return len(d.keywords) }
 
-// BlocksDomain returns true if host matches any built-in domain entry.
+// BlocksDomain returns true if host exactly matches a blocked domain
+// or is a subdomain of one (e.g. "www.pornpics.de" matches "pornpics.de").
 func (d *Database) BlocksDomain(host string) bool {
 	host = strings.ToLower(host)
-	for _, entry := range d.domains {
-		if host == entry || strings.HasSuffix(host, "."+entry) {
+	// Exact match
+	if _, ok := d.domainSet[host]; ok {
+		return true
+	}
+	// Subdomain match: strip labels one at a time
+	for {
+		dot := strings.IndexByte(host, '.')
+		if dot < 0 {
+			return false
+		}
+		host = host[dot+1:]
+		if _, ok := d.domainSet[host]; ok {
 			return true
 		}
 	}
-	return false
 }
 
 // BlocksURL returns true if the full URL contains any built-in URL pattern.
@@ -65,16 +78,22 @@ func (d *Database) BlocksKeyword(rawURL string) bool {
 // ── loader ────────────────────────────────────────────────────────────────────
 
 func load() *Database {
+	rawDomains := loadList("domains.json")
+	domainSet := make(map[string]struct{}, len(rawDomains))
+	for _, d := range rawDomains {
+		domainSet[d] = struct{}{}
+	}
 	return &Database{
-		domains:  loadFile("domains.json"),
-		urls:     loadFile("urls.json"),
-		keywords: loadFile("multi-words.json"),
+		domainSet: domainSet,
+		domains:   rawDomains,
+		urls:      loadList("urls.json"),
+		keywords:  loadList("multi-words.json"),
 	}
 }
 
-// loadFile parses a JSON file of the form {"key": ["item", ...], ...}
+// loadList parses a JSON file of the form {"key": ["item", ...], ...}
 // and returns a deduplicated, lowercased slice of all values.
-func loadFile(name string) []string {
+func loadList(name string) []string {
 	data, err := fs.ReadFile(name)
 	if err != nil {
 		return nil
@@ -83,17 +102,15 @@ func loadFile(name string) []string {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil
 	}
-	seen := make(map[string]struct{}, 4096)
+	seen := make(map[string]struct{}, len(raw)*64)
 	var out []string
 	for _, items := range raw {
 		for _, item := range items {
-			// Safe type assertion — skip non-string values instead of panicking
 			str, ok := item.(string)
 			if !ok {
 				continue
 			}
 			s := strings.ToLower(strings.TrimSpace(str))
-			// Strip common URL prefixes so we store the bare host/path
 			for _, pfx := range []string{"https://", "http://", "www."} {
 				s = strings.TrimPrefix(s, pfx)
 			}

@@ -1,0 +1,50 @@
+<div id="pageContent">
+	<noscript><div id="jsDisabled">Your browser has JavaScript disabled.<br>K9 Web Protection Administration will not work properly without JavaScript.<br>Please enable JavaScript and reload this page.</div><br><br></noscript>
+	<h3  id="title-search"><!--%PAGE_TITLE%--></h3>
+    <div id="notifier"></div>
+	<dl class="help">
+        <dt>K9 Safe Search settings.<span id="helpHide">Hide Help . . .</span><a href="#" id="helpLink">More Help . . .</a></dt>
+        <dd>
+			Redirect to K9 Safe Search will redirect searches to various search engines through K9's Safe Search.  This provides a safer search experience than other search engines provide.<br><br>Force Safe Search will prevent users from disabling Safe Search functionality provided by various websites.
+        </dd>
+	</dl>
+	<span class="notifyText info" id="notify-saveChangesSucceeded">Settings have been saved</span>
+	<div id="optionDiv-8" class="setting option lastSetting<!--%ALWAYS_USE_K9_SAFE_SEARCH_STATE%-->">
+		<a href="#" class="settingLink optionLink" id="option-8">
+			<input type="checkbox" id="optionCb-8"/>
+			<span class="name">Redirect to K9 Safe Search</span>
+			<span class="desc">Redirect searches on Google, MSN/Bing, Yahoo, Ask, and Flickr to K9 Safe Search to return safer search results.</span>
+		</a>
+	</div>
+	<a class="safesearch-lnk" href="<!--%K9_SAFE_SEARCH_SERVER%-->/about.html" target="_new">What is K9 Safe Search?</a>
+	<div id="optionDiv-5" class="setting option lastSetting<!--%FORCE_SAFE_SEARCH_STATE%-->">
+		<a href="#" class="settingLink optionLink" id="option-5">
+			<input type="checkbox" id="optionCb-5"/>
+			<span class="name">Force Safe Search</span>
+			<span class="desc">Force the use of safe or filtered searching on the following search engines:<br />Google, MSN/Bing, Yahoo, Ask, and Flickr<br /><br />NOTE: K9 Web Protection uses the safe search functionality provided by the individual search engines, this does not guarantee that all adult-oriented content will be blocked.</span>
+		</a>
+	</div>
+	<div id="optionDiv-10" class="setting option lastSetting<!--%FORCE_GOOGLE_SSL_STATE%-->">
+		<a href="#" class="settingLink optionLink" id="option-10">
+			<input type="checkbox" id="optionCb-10"/>
+			<span class="name">Redirect Google SSL</span>
+			<span class="desc">Redirects HTTPS requests to Google to standard HTTP requests<br /><br />NOTE: K9 Web Protection cannot filter details of HTTPS requests, so disabling this option will make it impossible for K9 to apply safe search or subcategorize Google's website.  https://www.google.com will be rated as "Open Image / Media Search".</span>
+		</a>
+	</div>
+	<div id="optionDiv-6" class="setting option lastSetting<!--%BLOCK_UNSAFE_SEARCH_VISIBLE%--><!--%BLOCK_UNSAFE_STATE%-->">
+		<a href="#" class="settingLink optionLink" id="option-6">
+			<input type="checkbox" id="optionCb-6"/>
+			<span class="name">Block Unsafe Search</span>
+			<span class="desc">Block the use of search engines that K9 does not support for safe or filtered searching.  Note that this option might block built-in search functionality on allowed Web sites.</span>
+			<span class="depr">Note: that this option will be removed in a future version of K9.  Please consider using the "Redirect to K9 Safe Search" option above instead.</span>
+		</a>
+	</div><br />
+	<div><div class="formDiv">
+		<span id="actionButtonRow-1" class="actionButtonRow">
+			<a class="okButton" id="y-saveChanges-1" href="#">Save</a>
+			<a class="cancelButton" id="n-saveChanges-1" href="#">Cancel</a>
+			<span class="clear"></span>
+		</span>
+	</div></div>
+	<span class="clear"></span><br /><br /><br />
+</div>

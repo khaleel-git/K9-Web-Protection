@@ -1,133 +1,145 @@
-// K9 Web Protection — Classic Admin UI
+// K9 Web Protection — Original UI wired to Go backend
 
 const go = () => window.go?.main?.App
 
-// ── Tab navigation ────────────────────────────────────────────────────────────
-document.querySelectorAll('.k9-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const tabName  = tab.dataset.tab
-    const firstPage = tab.dataset.page
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showTab(tabName) {
+  // Update main menu active state
+  document.querySelectorAll('#mainMenu li').forEach(li => li.classList.remove('selected'))
+  const tabLi = document.getElementById('tab-' + tabName)
+  if (tabLi) tabLi.classList.add('selected')
 
-    document.querySelectorAll('.k9-tab').forEach(t => t.classList.remove('active'))
-    tab.classList.add('active')
+  // Hide all pages
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none')
 
-    // Show/hide sidebar
-    const sidebar = document.getElementById('k9-sidebar')
-    const sidebarSetup    = document.getElementById('sidebar-setup')
-    const sidebarActivity = document.getElementById('sidebar-activity')
+  const sidebar = document.getElementById('subMenu')
+  const sidebarSetup   = document.getElementById('sidebar-setup')
+  const sidebarReports = document.getElementById('sidebar-reports')
 
-    if (tabName === 'home') {
-      sidebar.style.display = 'none'
-      showPage('home')
-    } else if (tabName === 'activity') {
-      sidebar.style.display = 'block'
-      sidebarSetup.style.display    = 'none'
-      sidebarActivity.style.display = 'block'
-      showPage('activity')
-      loadActivity()
-    } else if (tabName === 'setup') {
-      sidebar.style.display = 'block'
-      sidebarSetup.style.display    = 'block'
-      sidebarActivity.style.display = 'none'
-      showPage(firstPage)
-    }
+  if (tabName === 'home') {
+    sidebar.style.display = 'none'
+    showPage('home')
+    loadDashboard()
+  } else if (tabName === 'reports') {
+    sidebar.style.display = 'block'
+    sidebarSetup.style.display   = 'none'
+    sidebarReports.style.display = 'block'
+    clearSideLinks()
+    document.querySelector('#item-summary a').classList.add('selected')
+    showPage('reports')
+    loadActivity()
+  } else if (tabName === 'setup') {
+    sidebar.style.display = 'block'
+    sidebarSetup.style.display   = 'block'
+    sidebarReports.style.display = 'none'
+    showPage('categories')
+    setSideActive('categories')
+    loadCategories()
+  }
+}
+
+function showPage(name) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none')
+  const pg = document.getElementById('page-' + name)
+  if (pg) pg.style.display = 'block'
+}
+
+function setSideActive(name) {
+  clearSideLinks()
+  const item = document.getElementById('item-' + name) ||
+               document.querySelector(`[data-page="${name}"]`)?.parentElement
+  if (item) item.classList.add('selected')
+}
+
+function clearSideLinks() {
+  document.querySelectorAll('#subMenu li').forEach(li => li.classList.remove('selected'))
+}
+
+// Tab clicks
+document.querySelectorAll('.navLink').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault()
+    showTab(a.dataset.tab)
   })
 })
 
-// Sidebar link navigation
-document.querySelectorAll('.sidebar-link').forEach(link => {
-  link.addEventListener('click', () => {
-    const page = link.dataset.page
-    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'))
-    link.classList.add('active')
+// Sidebar clicks
+document.querySelectorAll('.sideLink').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault()
+    const page = a.dataset.page
+    clearSideLinks()
+    a.parentElement.classList.add('selected')
     showPage(page)
-
-    // Load data for each section
-    if (page === 'setup-exceptions') loadExceptions()
-    if (page === 'setup-keywords')   loadKeywords()
-    if (page === 'setup-categories') loadCategories()
-    if (page === 'setup-password')   loadPasswordSettings()
-    if (page === 'activity')         loadActivity()
+    if (page === 'categories') loadCategories()
+    if (page === 'exceptions') loadExceptions()
+    if (page === 'keywords')   loadKeywords()
+    if (page === 'password')   loadPasswordSettings()
   })
 })
 
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
-  const page = document.getElementById('page-' + id)
-  if (page) page.classList.add('active')
+// ── Notification bar ──────────────────────────────────────────────────────────
+let notifyTimer
+function notify(msg, type = 'ok') {
+  const bar = document.getElementById('notifyBar')
+  bar.textContent = type === 'ok' ? '✓ ' + msg : '✖ ' + msg
+  bar.className = `notifyBar show ${type}`
+  clearTimeout(notifyTimer)
+  notifyTimer = setTimeout(() => bar.classList.remove('show'), 3000)
 }
 
-// ── Status message ────────────────────────────────────────────────────────────
-let msgTimer
-function msg(text, type = 'success') {
-  const el = document.getElementById('k9-msg')
-  el.textContent = text
-  el.className = `k9-msg show ${type}`
-  clearTimeout(msgTimer)
-  msgTimer = setTimeout(() => el.classList.remove('show'), 3000)
-}
-
-// ── Dashboard / Home ──────────────────────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
   if (!window.go?.main?.App) return
   const s = await go().GetStatus()
 
   const l1ok = s.layer1Active
   const l2ok = s.proxyRunning
+  const active = l1ok && l2ok
 
   document.getElementById('status-layer1').innerHTML = l1ok
-    ? '<span class="dot-active">●</span> Active'
-    : '<span class="dot-inactive">●</span> Inactive'
+    ? '<span style="color:green">&#x25CF;</span> Active'
+    : '<span style="color:red">&#x25CF;</span> Inactive'
   document.getElementById('status-layer2').innerHTML = l2ok
-    ? '<span class="dot-active">●</span> Running'
-    : '<span class="dot-inactive">●</span> Stopped'
-  document.getElementById('status-port').textContent    = s.proxyPort
-  document.getElementById('stat-today').textContent     = s.blockedToday.toLocaleString()
-  document.getElementById('stat-total').textContent     = s.totalBlocked.toLocaleString()
-  document.getElementById('stat-domains').textContent   = s.dbDomains.toLocaleString()
-  document.getElementById('stat-urls').textContent      = s.dbUrls.toLocaleString()
-  document.getElementById('stat-keywords').textContent  = s.dbKeywords.toLocaleString()
+    ? '<span style="color:green">&#x25CF;</span> Running'
+    : '<span style="color:red">&#x25CF;</span> Stopped'
+  document.getElementById('stat-today').textContent = s.blockedToday.toLocaleString()
+  document.getElementById('stat-total').textContent = s.totalBlocked.toLocaleString()
+  document.getElementById('stat-db').textContent =
+    `${s.dbDomains.toLocaleString()} domains, ${s.dbUrls.toLocaleString()} URL patterns, ${s.dbKeywords.toLocaleString()} keywords`
 
-  const active = l1ok && l2ok
-  document.getElementById('btn-enable').style.display  = active ? 'none' : 'inline-block'
-  document.getElementById('btn-disable').style.display = active ? 'inline-block' : 'none'
+  document.getElementById('btn-enable').style.display  = active ? 'none' : 'inline'
+  document.getElementById('btn-disable').style.display = active ? 'inline' : 'none'
 
-  const pill = document.getElementById('header-status')
-  if (active) { pill.textContent = '● Active';   pill.className = 'k9-status-pill' }
-  else        { pill.textContent = '● Inactive'; pill.className = 'k9-status-pill inactive' }
+  const dot = document.getElementById('k9StatusDot')
+  if (active) { dot.textContent = 'Active';   dot.className = 'active' }
+  else        { dot.textContent = 'Inactive'; dot.className = '' }
 }
 
 async function enableProtection() {
-  try {
-    await go().EnableProtection()
-    msg('Protection enabled successfully.', 'success')
-    loadDashboard()
-  } catch (e) { msg(String(e), 'error') }
+  try { await go().EnableProtection(); notify('Protection enabled.', 'ok'); loadDashboard() }
+  catch (e) { notify(String(e), 'err') }
 }
 window.enableProtection = enableProtection
 
 // ── Disable modal ─────────────────────────────────────────────────────────────
 async function showDisableModal() {
   const hasPw = await go().HasPassword()
-  document.getElementById('disable-pw-row').style.display = hasPw ? 'block' : 'none'
+  document.getElementById('modal-pw-row').style.display = hasPw ? 'block' : 'none'
   document.getElementById('disable-pw').value = ''
-  document.getElementById('modal-overlay').classList.add('show')
+  document.getElementById('modalBg').classList.add('show')
 }
 window.showDisableModal = showDisableModal
 
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('show')
-}
+function closeModal() { document.getElementById('modalBg').classList.remove('show') }
 window.closeModal = closeModal
 
 async function confirmDisable() {
   const pw = document.getElementById('disable-pw').value
   try {
     await go().DisableProtection(pw)
-    closeModal()
-    msg('Protection disabled.', 'error')
-    loadDashboard()
-  } catch (e) { msg(String(e), 'error') }
+    closeModal(); notify('Protection disabled.', 'ok'); loadDashboard()
+  } catch (e) { notify(String(e), 'err') }
 }
 window.confirmDisable = confirmDisable
 
@@ -137,225 +149,237 @@ async function loadActivity() {
   document.getElementById('gen-total').textContent = s.totalBlocked.toLocaleString()
   document.getElementById('gen-today').textContent = s.blockedToday.toLocaleString()
 
-  const tbody = document.getElementById('activity-categories')
+  const tbody = document.getElementById('activity-rows')
   if (!s.topBlocked?.length) {
-    tbody.innerHTML = '<tr><td colspan="2" class="empty-row">No activity recorded yet.</td></tr>'
+    tbody.innerHTML = '<tr><td colspan="2" style="padding:6px; color:#888; font-style:italic">No activity recorded yet.</td></tr>'
     return
   }
+  let alt = false
   tbody.innerHTML = s.topBlocked
     .sort((a, b) => b.count - a.count)
-    .map(e => `<tr>
-      <td><span class="dot-inactive">⊘</span> ${escHtml(e.domain)}</td>
-      <td style="text-align:right">${e.count}</td>
-    </tr>`).join('')
+    .map(e => {
+      const row = `<tr ${alt ? 'style="background:#e8eeff"' : ''}>
+        <td style="padding:4px 8px; color:#cc2222">&#x29B8; ${esc(e.domain)}</td>
+        <td style="text-align:right; padding:4px 8px">${e.count}</td>
+      </tr>`
+      alt = !alt; return row
+    }).join('')
 }
 
-// ── Web Categories ────────────────────────────────────────────────────────────
+// ── Categories ────────────────────────────────────────────────────────────────
 async function loadCategories() {
   const s = await go().GetContentSettings()
-  // Map settings to level
   const level = s.blockAdultContent ? 'default' : 'minimal'
-  document.querySelectorAll('input[name="level"]').forEach(r => {
-    r.checked = (r.value === level)
-  })
+
+  document.querySelectorAll('[id^="setting-"]').forEach(el => el.classList.remove('selected'))
+  const row = document.getElementById('setting-' + level)
+  if (row) row.classList.add('selected')
+
+  const radio = document.getElementById('level-' + level)
+  if (radio) radio.checked = true
+
   document.getElementById('cat-adult').checked      = s.blockAdultContent !== false
   document.getElementById('cat-youtube').checked    = s.blockYouTube === true
   document.getElementById('cat-safesearch').checked = s.safeSearch !== false
-  updateLevelUI()
+
+  updateCategoryUI()
 }
 
-function updateLevelUI() {
-  const val = document.querySelector('input[name="level"]:checked')?.value || 'default'
-  document.querySelectorAll('.level-row').forEach(row => row.classList.remove('selected'))
-  const activeRow = document.getElementById('level-' + val)
-  if (activeRow) activeRow.classList.add('selected')
-  document.getElementById('custom-section').style.display = val === 'custom' ? 'block' : 'none'
+function updateCategoryUI() {
+  const checked = document.querySelector('input[name="level"]:checked')?.value || 'default'
+  document.querySelectorAll('[id^="setting-"]').forEach(el => el.classList.remove('selected'))
+  const row = document.getElementById('setting-' + checked)
+  if (row) row.classList.add('selected')
+  document.getElementById('custom-cats').style.display = checked === 'custom' ? 'block' : 'none'
+  document.getElementById('cat-list-default').style.display = checked === 'default' ? 'block' : 'none'
 }
-document.querySelectorAll('input[name="level"]').forEach(r =>
-  r.addEventListener('change', updateLevelUI)
-)
+
+document.querySelectorAll('.radioLink').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault()
+    const radioId = a.id.replace('radio-', 'level-')
+    const radio = document.getElementById(radioId)
+    if (radio) { radio.checked = true; updateCategoryUI() }
+  })
+})
 
 async function saveCategories() {
   const level = document.querySelector('input[name="level"]:checked')?.value || 'default'
-  let blockAdult = true, blockYouTube = false, safeSearch = true
-  if (level === 'high')     { blockAdult = true;  blockYouTube = true; }
-  if (level === 'moderate') { blockAdult = true;  blockYouTube = false; }
-  if (level === 'minimal')  { blockAdult = false; blockYouTube = false; }
+  let blockAdultContent = true, blockYouTube = false, safeSearch = true, blockImageSearch = false
+  if (level === 'high')     { blockAdultContent = true;  blockYouTube = true; }
+  if (level === 'moderate') { blockAdultContent = true;  blockYouTube = false; }
+  if (level === 'minimal')  { blockAdultContent = false; blockYouTube = false; }
+  if (level === 'monitor')  { blockAdultContent = false; blockYouTube = false; }
   if (level === 'custom')   {
-    blockAdult   = document.getElementById('cat-adult').checked
-    blockYouTube = document.getElementById('cat-youtube').checked
-    safeSearch   = document.getElementById('cat-safesearch').checked
+    blockAdultContent = document.getElementById('cat-adult').checked
+    blockYouTube      = document.getElementById('cat-youtube').checked
+    safeSearch        = document.getElementById('cat-safesearch').checked
   }
   try {
-    await go().SaveContentSettings({ blockAdultContent: blockAdult, blockYouTube, safeSearch, blockImageSearch: false })
-    msg('Category settings saved.', 'success')
-  } catch (e) { msg(String(e), 'error') }
+    await go().SaveContentSettings({ blockAdultContent, blockYouTube, safeSearch, blockImageSearch })
+    notify('Category settings saved.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
 }
 window.saveCategories = saveCategories
 
-// ── Web Site Exceptions ───────────────────────────────────────────────────────
+// ── Exceptions ────────────────────────────────────────────────────────────────
 async function loadExceptions() {
   const bl = await go().GetBlocklist()
-  renderExceptionList('blocklist-items', bl.userAdded, removeFromBlocklist, 'red')
+  renderList('blocklist-items', bl.userAdded, removeFromBlocklist, 'red')
   const al = await go().GetAllowlist()
-  renderExceptionList('allowlist-items', al, removeFromAllowlist, 'green')
+  renderList('allowlist-items', al, removeFromAllowlist, 'green')
 }
 
-function renderExceptionList(id, items, removeFn, color) {
+function renderList(id, items, removeFn, color) {
   const el = document.getElementById(id)
   if (!items?.length) {
-    el.innerHTML = '<div class="empty-row">No entries in this list</div>'
+    el.innerHTML = '<span style="color:#888; font-style:italic">No entries in this list</span>'
     return
   }
   el.innerHTML = items.map(item =>
-    `<div class="exception-item">
-       <span style="color:${color === 'red' ? 'var(--red)' : 'var(--green)'}">⊘ ${escHtml(item)}</span>
-       <button class="remove-btn" data-item="${escHtml(item)}" data-fn="${removeFn.name}">✕</button>
+    `<div style="font-size:12px; padding:2px 0; display:flex; align-items:center; gap:6px">
+       <span style="color:${color === 'red' ? '#cc2222' : '#228B22'}; font-weight:bold">&#x29B8;</span>
+       <span style="color:#003E7E">${esc(item)}</span>
+       <a href="#" style="color:#cc2222; font-weight:bold; font-size:14px; text-decoration:none; margin-left:4px"
+          onclick="(${removeFn.name})('${esc(item).replace(/'/g,"\\'")}'); return false;">&times;</a>
      </div>`
   ).join('')
-  el.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.fn === 'removeFromBlocklist') removeFromBlocklist(btn.dataset.item)
-      else removeFromAllowlist(btn.dataset.item)
-    })
-  })
 }
 
 async function addToBlocklist() {
-  const input = document.getElementById('blocklist-input')
+  const input = document.getElementById('listTb-0')
   const val = input.value.trim()
   if (!val) return
-  try { await go().AddToBlocklist(val); input.value = ''; loadExceptions(); msg('Added to block list.') }
-  catch (e) { msg(String(e), 'error') }
+  try { await go().AddToBlocklist(val); input.value = ''; loadExceptions(); notify('Added to Always Block list.') }
+  catch (e) { notify(String(e), 'err') }
 }
 async function removeFromBlocklist(domain) {
-  await go().RemoveFromBlocklist(domain); loadExceptions(); msg('Removed from block list.')
+  await go().RemoveFromBlocklist(domain); loadExceptions(); notify('Removed.')
 }
 async function addToAllowlist() {
-  const input = document.getElementById('allowlist-input')
+  const input = document.getElementById('listTb-1')
   const val = input.value.trim()
   if (!val) return
-  try { await go().AddToAllowlist(val); input.value = ''; loadExceptions(); msg('Added to allow list.') }
-  catch (e) { msg(String(e), 'error') }
+  try { await go().AddToAllowlist(val); input.value = ''; loadExceptions(); notify('Added to Always Allow list.') }
+  catch (e) { notify(String(e), 'err') }
 }
 async function removeFromAllowlist(domain) {
-  await go().RemoveFromAllowlist(domain); loadExceptions(); msg('Removed from allow list.')
+  await go().RemoveFromAllowlist(domain); loadExceptions(); notify('Removed.')
 }
-
-function saveExceptions() { msg('Exceptions saved.', 'success') }
 window.addToBlocklist = addToBlocklist
 window.addToAllowlist = addToAllowlist
-window.saveExceptions = saveExceptions
 
-document.getElementById('blocklist-input').addEventListener('keydown', e => { if (e.key === 'Enter') addToBlocklist() })
-document.getElementById('allowlist-input').addEventListener('keydown', e => { if (e.key === 'Enter') addToAllowlist() })
+document.getElementById('listTb-0').addEventListener('keydown', e => { if (e.key === 'Enter') addToBlocklist() })
+document.getElementById('listTb-1').addEventListener('keydown', e => { if (e.key === 'Enter') addToAllowlist() })
 
-// ── URL Keywords ──────────────────────────────────────────────────────────────
+// ── Keywords ──────────────────────────────────────────────────────────────────
 async function loadKeywords() {
   const data = await go().GetKeywords()
-  document.getElementById('kw-builtin-count').textContent = data.builtInCount.toLocaleString() + ' entries (always active)'
-  const el = document.getElementById('keyword-items')
+  document.getElementById('kw-builtin-desc').textContent =
+    `Built-in: ${data.builtInCount.toLocaleString()} keyword entries (always active)`
+  const el = document.getElementById('kw-items')
   if (!data.userAdded?.length) {
-    el.innerHTML = '<div class="empty-row">No custom keywords added.</div>'
+    el.innerHTML = '<span style="color:#888; font-style:italic">No custom keywords added.</span>'
     return
   }
   el.innerHTML = data.userAdded.map(kw =>
-    `<div class="keyword-item">
-       <span>🔑 ${escHtml(kw)}</span>
-       <button class="remove-btn" data-kw="${escHtml(kw)}">✕</button>
+    `<div style="font-size:12px; padding:2px 0; display:flex; align-items:center; gap:6px">
+       <span style="color:#cc6600; font-weight:bold">&#x25B6;</span>
+       <span>${esc(kw)}</span>
+       <a href="#" style="color:#cc2222; font-weight:bold; font-size:14px; text-decoration:none; margin-left:4px"
+          onclick="removeKeyword('${esc(kw).replace(/'/g,"\\'")}'); return false;">&times;</a>
      </div>`
   ).join('')
-  el.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', () => removeKeyword(btn.dataset.kw))
-  })
 }
 
 async function addKeyword() {
-  const input = document.getElementById('keyword-input')
+  const input = document.getElementById('kw-input')
   const val = input.value.trim()
   if (!val) return
-  try { await go().AddKeyword(val); input.value = ''; loadKeywords(); msg('Keyword added.') }
-  catch (e) { msg(String(e), 'error') }
+  try { await go().AddKeyword(val); input.value = ''; loadKeywords(); notify('Keyword added.') }
+  catch (e) { notify(String(e), 'err') }
 }
 async function removeKeyword(kw) {
-  await go().RemoveKeyword(kw); loadKeywords(); msg('Keyword removed.')
+  await go().RemoveKeyword(kw); loadKeywords(); notify('Keyword removed.')
 }
 window.addKeyword = addKeyword
-document.getElementById('keyword-input').addEventListener('keydown', e => { if (e.key === 'Enter') addKeyword() })
+window.removeKeyword = removeKeyword
+document.getElementById('kw-input').addEventListener('keydown', e => { if (e.key === 'Enter') addKeyword() })
 
-// ── Password / Security ───────────────────────────────────────────────────────
+// ── Safe Search ───────────────────────────────────────────────────────────────
+async function saveSafeSearch() {
+  const on = document.getElementById('cb-safesearch').checked
+  try {
+    const s = await go().GetContentSettings()
+    await go().SaveContentSettings({ ...s, safeSearch: on })
+    notify('Safe Search setting saved.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
+}
+window.saveSafeSearch = saveSafeSearch
+
+// ── Password ──────────────────────────────────────────────────────────────────
 async function loadPasswordSettings() {
   const adv   = await go().GetAdvancedSettings()
   const proxy = await go().GetProxySettings()
   document.getElementById('setting-delay').value = String(adv.disableDelayHours || 0)
-  document.getElementById('setting-port').value  = proxy.proxyPort
 }
 
 async function savePassword() {
   const current = document.getElementById('pw-current').value
   const next    = document.getElementById('pw-new').value
   const confirm = document.getElementById('pw-confirm').value
-  if (next !== confirm) { msg('Passwords do not match.', 'error'); return }
+  if (next !== confirm) { notify('Passwords do not match.', 'err'); return }
   try {
     await go().SetPassword(current, next)
     document.getElementById('pw-current').value = ''
     document.getElementById('pw-new').value     = ''
     document.getElementById('pw-confirm').value = ''
-    msg(next === '' ? 'Password removed.' : 'Password saved.', 'success')
-  } catch (e) { msg(String(e), 'error') }
+    notify(next ? 'Password saved.' : 'Password removed.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
+}
+async function removePassword() {
+  const current = document.getElementById('pw-current').value
+  try { await go().SetPassword(current, ''); notify('Password removed.', 'ok') }
+  catch (e) { notify(String(e), 'err') }
 }
 window.savePassword = savePassword
+window.removePassword = removePassword
 
 async function saveAdvancedSettings() {
+  const delay = parseInt(document.getElementById('setting-delay').value)
   try {
-    const delay = parseInt(document.getElementById('setting-delay').value)
-    const adv   = await go().GetAdvancedSettings()
+    const adv = await go().GetAdvancedSettings()
     await go().SaveAdvancedSettings({ ...adv, disableDelayHours: delay })
-    msg('Settings saved.', 'success')
-  } catch (e) { msg(String(e), 'error') }
+    notify('Settings saved.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
 }
 window.saveAdvancedSettings = saveAdvancedSettings
-
-async function saveProxySettings() {
-  const port = parseInt(document.getElementById('setting-port').value)
-  try {
-    await go().SaveProxySettings({ proxyPort: port, autoStart: true })
-    msg('Proxy settings saved.', 'success')
-  } catch (e) { msg(String(e), 'error') }
-}
-window.saveProxySettings = saveProxySettings
 
 // ── Uninstall ─────────────────────────────────────────────────────────────────
 async function showUninstall() {
   const hasPw = await go().HasPassword()
-  const pw = hasPw ? prompt('Enter password to uninstall K9:') : ''
+  const pw = hasPw ? prompt('Enter password to uninstall K9 Web Protection:') : ''
   if (pw === null) return
-  try {
-    await go().Uninstall(pw || '')
-    msg('K9 uninstalled. Please remove the app from /Applications.', 'error')
-  } catch (e) { msg(String(e), 'error') }
+  try { await go().Uninstall(pw || ''); notify('K9 uninstalled. Please delete the app from /Applications.', 'ok') }
+  catch (e) { notify(String(e), 'err') }
 }
 window.showUninstall = showUninstall
 
 // ── Utility ───────────────────────────────────────────────────────────────────
-function escHtml(s) {
+function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
   const init = () => {
-    if (window.go?.main?.App) {
-      loadDashboard()
-      loadCategories()
-    } else {
-      setTimeout(init, 100)
-    }
+    if (window.go?.main?.App) { loadDashboard() }
+    else { setTimeout(init, 100) }
   }
   init()
 })
 
 setInterval(() => {
-  const homePage = document.getElementById('page-home')
-  if (homePage?.classList.contains('active') && window.go?.main?.App) loadDashboard()
+  const home = document.getElementById('page-home')
+  if (home?.style.display !== 'none' && window.go?.main?.App) loadDashboard()
 }, 10000)

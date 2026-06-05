@@ -1,0 +1,84 @@
+    <div id="pageContent">
+	<noscript><div id="jsDisabled">Your browser has JavaScript disabled.<br>K9 Web Protection Administration will not work properly without JavaScript.<br>Please enable JavaScript and reload this page.</div><br><br></noscript>
+      <h3  id="title-other"><!--%PAGE_TITLE%--></h3>
+    <div id="notifier"></div>
+      <dl class="help">
+        <dt>Other K9 settings.<span id="helpHide">Hide Help . . .</span><a href="#" id="helpLink">More Help . . .</a></dt>
+        <dd>
+          <span class="<!--%BETA_VISIBLE%-->">Update to Beta enables you to get an advance copy of new K9 Web Protection software under development. Blue Coat distributes Beta versions so that K9 gets used in "real world" environments before being released as a final version. Please note that Beta versions might be incomplete and less stable than final versions.<br><br></span>Filter Secure Traffic enables K9 to block secure Web sites (that is, sites that use the HTTPS protocol).
+        </dd>
+      </dl>
+<span class="notifyText info" id="notify-saveChangesSucceeded">Settings have been saved</span>
+<span class="notifyText info" id="notify-resetProfileSucceeded">All setting have been reset to their initial (default) values</span>
+<span class="notifyText error" id="notify-resetProfileFailed">Settings Reset Failed</span>
+<div id="optionDiv-4" class="setting option lastSetting<!--%BETA_VISIBLE%--><!--%BETA_STATE%-->">
+  <a href="#" class="settingLink optionLink" id="option-4">
+    <input type="checkbox" id="optionCb-4"/>
+    <span class="name">Update to Beta</span>
+    <span class="desc">Update to Beta versions of K9 Web Protection.</span>
+  </a>
+</div>
+<div id="optionDiv-7" class="setting option lastSetting<!--%FILTER_HTTPS_STATE%-->">
+  <a href="#" class="settingLink optionLink" id="option-7">
+    <input type="checkbox" id="optionCb-7"/>
+    <span class="name">Filter secure traffic</span>
+    <span class="desc">Filter secure (HTTPS) traffic.</span>
+  </a>
+</div>
+<div id="optionDiv-12" class="setting option lastSetting<!--%YOU_TUBE_SAFETY%-->">
+  <a href="#" class="settingLink optionLink" id="option-12">
+    <input type="checkbox" id="optionCb-12"/>
+    <span class="name">Force YouTube Safety Mode</span>
+    <span class="desc">Removes adult content from search results and blocks comments.<br /><br />NOTE: K9 Web Protection uses the functionality provided by YouTube, this does not guarantee that all adult-oriented content will be blocked.</span>
+  </a>
+</div>
+<div id="optionDiv-13" class="setting option lastSetting<!--%FILTER_YOU_TUBE%-->">
+  <a href="#" class="settingLink optionLink" id="option-13">
+    <input type="checkbox" id="optionCb-13"/>
+    <span class="name">Advanced YouTube Filtering</span>
+	<span class="desc">Experimental: Removes "Open Image/Media Search" category from youtube.com and attempts to filter individual videos and thumbnails.</span>
+  </a>
+</div><br />
+<div><div class="formDiv">
+  <span id="actionButtonRow-1" class="actionButtonRow">
+    <a class="okButton" id="y-saveChanges-1" href="#">Save</a>
+    <a class="cancelButton" id="n-saveChanges-1" href="#">Cancel</a>
+    <span class="clear"></span>
+  </span>
+</div></div>
+<span class="clear"></span><br /><br /><br />
+<div class="buttonset bodyDiv smallButtons">
+  <div class="blockPageAdminControlsDiv">
+<div class="button">
+  <a class="button" href="#" id="btn-reset-settings">
+    <span class="title">Reset K9 to Initial Settings</span>
+    <span class="description">Reset all settings to their factory defaults.</span>
+  </a>
+</div>
+<div class="button<!--%START_SM_VISIBLE%-->">
+  <a class="button" href="#" id="btn-disableK9">
+    <span class="title">Enter Supervisor Mode</span>
+    <span class="description">Allow *ALL* Web access 
+<select id="btn-disableK9-dd">
+  <option value="5">for 5 minutes</option>
+  <option value="15" selected="selected">for 15 minutes</option>
+  <option value="30">for 30 minutes</option>
+  <option value="60">for 60 minutes</option>
+</select>
+ <br /><span class="warning">WARNING: In Supervisor Mode K9 will not block any Web content. Malware and Phishing protection will also be disabled.</span></span>
+  </a>
+</div>
+<div class="button<!--%END_SM_VISIBLE%-->">
+  <a class="button" href="#" id="btn-enableK9">
+    <span class="title">Exit Supervisor Mode</span>
+    <span class="description">Activate K9 Web Protection.<br /><span class='warning'>K9 is currently in Supervisor Mode.</span></span>
+  </a>
+</div>
+</div>
+</div>
+<div class="clear"></div>
+      <span class="yesNoData" id="t-resetProfile">Reset All Settings</span>
+      <span class="yesNoData" id="q-resetProfile">Are you sure you want to reset all settings to their initial values?</span>
+      <span class="yesNoData" id="y-resetProfile">Yes</span>
+      <span class="yesNoData" id="n-resetProfile">No</span>
+</div>

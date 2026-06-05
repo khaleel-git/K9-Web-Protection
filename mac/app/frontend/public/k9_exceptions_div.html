@@ -1,0 +1,66 @@
+    <div id="pageContent">
+	<noscript><div id="jsDisabled">Your browser has JavaScript disabled.<br />K9 Web Protection Administration will not work properly without JavaScript.<br />Please enable JavaScript and reload this page.</div><br /><br /></noscript>
+      <h3  id="title-overrides"><!--%PAGE_TITLE%--></h3>
+    <div id="notifier"></div>
+      <dl class="help">
+        <dt>Create lists of Web sites to always block or always allow.<span id="helpHide">Hide Help . . .</span><a href="#" id="helpLink">More Help . . .</a></dt>
+        <dd>
+          To add a Web site to a list, enter the URL and click Add to List. To delete a Web site from a list, click the red icon next to its URL. URLs that display a time, like '(12 min.)' have been temporarily allowed and will be automatically removed from the list when the time goes to zero.<br><br>
+		  Blacklist Without Password allows you to add sites to the Always Block list without needing to enter the administrator password (helpful for self-moderators).  When selected a link will be given which can be bookmarked to quickly add any visited site to the list.
+        </dd>
+      </dl>
+	<span class="notifyText error" id="notify-err-0">%s is already in the Always Block list</span>
+	<span class="notifyText error" id="notify-existsInOtherList-0">%s already exists in the Always Allow list</span>
+	<span class="notifyText error" id="notify-invalid-0">The URL you entered contains invalid characters or is too long</span>
+	<span class="notifyText error" id="notify-isLocal-0">You cannot add the K9 admin pages to the Always Block list</span>
+	<span class="notifyText error" id="notify-err-1">%s is already in the Always Allow list</span>
+	<span class="notifyText error" id="notify-existsInOtherList-1">%s already exists in the Always Block list</span>
+	<span class="notifyText error" id="notify-invalid-1">The URL you entered contains invalid characters or is too long</span>
+	<span class="notifyText info" id="notify-saveChangesSucceeded">Settings have been saved</span>
+	<div>
+	<!--%OVERRIDES%-->
+	<div id="listDiv-0" class="setting list lastSetting selected">
+	  <span class="settingSpan listSpan" id="list-0">
+		<span class="name">Always Block</span>
+		<span class="desc">Block regardless of category</span>
+	  </span>
+	<form id="listForm-0" action=""><div class="details">
+		<h5>Web Site to Add: <input type="text" id="listTb-0" value="" title="Enter a URL" /><a href="#" class="listAdd" id="listAdd-0">Add to List</a></h5>
+		<span class="clear"></span>
+		<span id="emptyList-0" class="emptyList<!--%BLACK_LIST_SELECTED%-->">No entries in this list</span>
+		<!--%BLACK_LIST_CONTENTS%-->
+		<span class="clear"></span>
+	  </div>
+	</form></div><div id="listDiv-1" class="setting list lastSetting selected">
+	  <span class="settingSpan listSpan" id="list-1">
+		<span class="name">Always Allow</span>
+		<span class="desc">Allow regardless of category</span>
+	  </span>
+	<form id="listForm-1" action=""><div class="details">
+		<h5>Web Site to Add: <input type="text" id="listTb-1" value="" title="Enter a URL" /><a href="#" class="listAdd" id="listAdd-1">Add to List</a></h5>
+		<span class="clear"></span>
+		<span id="emptyList-1" class="emptyList<!--%WHITE_LIST_SELECTED%-->">No entries in this list</span>
+		<!--%WHITE_LIST_CONTENTS%-->
+	   <span class="clear"></span>
+	  </div>
+	</form></div><br />
+	<div id="optionDiv-9" class="setting option lastSetting<!--%BLACKLIST_WITHOUT_PW_STATE%-->">
+		<a href="#" class="settingLink optionLink" id="option-9">
+			<input type="checkbox" id="optionCb-9"/>
+			<span class="name">Blacklist Without Password</span>
+			<span class="desc">Allow adding sites to the "Always Block" list without requiring the admin password (helpful for self-moderators).</span>
+		</a>
+	</div>
+	<div id="bmarkDiv" class="<!--%SHOW_BMARK_DIV%-->">
+		Drag this link to your bookmarks to add sites to K9's "Always Block" list: 
+		<a href="javascript:(function(){var a=window,b=document,c=a.location.href,f='k9AddSiteToBlacklist',g='http://<!--%LOCAL_WEBSERVER_STRING%-->';if(a[f]){a[f](c,g);}else{var d=b.createElement('SCRIPT');d.type='text/javascript';d.src=g+'/k9.js';var e=function(){a[f](c,g);};d.onreadystatechange=function(){this.readyState=='complete'&&e();};d.onload=e;b.getElementsByTagName('head')[0].appendChild(d);}})()">Block Site in K9</a>
+	</div><br />
+	<div><div class="formDiv">
+	  <span id="actionButtonRow-0" class="actionButtonRow">
+		<a class="okButton" id="y-saveChanges-0" href="#">Save</a>
+		<a class="cancelButton" id="n-saveChanges-0" href="#">Cancel</a>
+		<span class="clear"></span>
+	  </span>
+	</div></div>
+	</div>
+	</div>

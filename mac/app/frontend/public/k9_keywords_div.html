@@ -1,0 +1,45 @@
+	<div id="pageContent">
+	<noscript><div id="jsDisabled">Your browser has JavaScript disabled.<br>K9 Web Protection Administration will not work properly without JavaScript.<br>Please enable JavaScript and reload this page.</div><br><br></noscript>
+		<h3  id="title-keywords"><!--%PAGE_TITLE%--></h3>
+		<div id="notifier"></div>
+		<dl class="help">
+			<dt>Create a list of keywords to block.<span id="helpHide">Hide Help . . .</span><a href="#" id="helpLink">More Help . . .</a></dt>
+			<dd>
+			  For example, if you add "cigarette" to the list of keywords, a Web site address with the word “cigarette” is blocked. To be more flexible, add an asterisk (*) to the beginning or end of the word. For example, entering “sex*” blocks all Web pages that have an address starting with the word “sex”. If the keyword itself is offensive, select Hide Keywords to prevent all keywords from being displayed on the K9 block page. To delete a keyword from the list, click the red icon next to the word.
+			</dd>
+		</dl>
+		<span class="notifyText info" id="notify-saveChangesSucceeded">Settings have been saved</span>
+		<span class="notifyText error" id="notify-err-2">%s is already in your URL Keywords list</span>
+		<span class="notifyText error" id="notify-invalid-2">The keyword you entered contains invalid characters, an interior *, or is too long</span>
+		<!--%OVERRIDES%-->
+		<div id="listDiv-2" class="setting list lastSetting selected">
+			<span class="settingSpan listSpan" id="list-2">
+				<span class="name">URL Keywords</span>
+				<span class="desc">Words which, if found in a URL, cause a K9 Block page to display.</span>
+			</span>
+			<form id="listForm-2" action="">
+				<div class="details">
+					<h5>Keyword to Add: <input type="text" id="listTb-2" value="" title="Enter a URL - use &quot;&#42;&quot; for wildcard" /><a href="#" class="listAdd" id="listAdd-2">Add to List</a></h5>
+					<span class="clear"></span>
+					<span id="emptyList-2" class="emptyList<!--%LIST_SELECTED%-->">No entries in this list</span>
+					<!--%LIST_CONTENTS%-->
+					<span class="clear"></span>
+				</div>
+			</form>
+		</div>
+		<div id="optionDiv-0" class="setting option lastSetting<!--%HIDE_KW_STATE%-->">
+			<a href="#" class="settingLink optionLink" id="option-0">
+				<input type="checkbox" id="optionCb-0"/>
+				<span class="name">Hide Keywords</span>
+				<span class="desc">Hide the keywords on K9 Block pages.</span>
+			</a>
+		</div>
+		<br>
+		<div><div class="formDiv">
+			<span id="actionButtonRow-0" class="actionButtonRow">
+				<a class="okButton" id="y-saveChanges-0" href="#">Save</a>
+				<a class="cancelButton" id="n-saveChanges-0" href="#">Cancel</a>
+				<span class="clear"></span>
+			</span>
+		</div></div>
+	</div>

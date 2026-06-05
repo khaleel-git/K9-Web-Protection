@@ -1,0 +1,60 @@
+    <div id="pageContent">
+	<noscript><div id="jsDisabled">Your browser has JavaScript disabled.<br>K9 Web Protection Administration will not work properly without JavaScript.<br>Please enable JavaScript and reload this page.</div><br><br></noscript>
+      <h3  id="title-effects"><!--%PAGE_TITLE%--></h3>
+    <div id="notifier"></div>
+      <dl class="help">
+        <dt>Set general blocking options.<span id="helpHide">Hide Help . . .</span><a href="#" id="helpLink">More Help . . .</a></dt>
+        <dd>
+          Bark When Blocked plays a barking sound when a Web page is blocked. Make sure sound is enabled and not muted.<br><br>Show Admin Options displays options on blocked Web pages that enable administrators to view the blocked Web page.<br><br>Enable Time Out allows you to block all Web access if too many Web pages are blocked in a given period of time.
+        </dd>
+      </dl>
+<span class="notifyText info" id="notify-saveChangesSucceeded">Settings have been saved</span>
+<div id="optionDiv-1" class="setting option<!--%BARK_STATE%-->">
+  <a href="#" class="settingLink optionLink" id="option-1">
+    <input type="checkbox" id="optionCb-1"/>
+    <span class="name">Bark When Blocked</span>
+    <span class="desc">Play a bark sound when K9 blocks a Web page.</span>
+  </a>
+</div>
+<div id="optionDiv-2" class="setting option lastSetting<!--%SHOW_ADMIN_STATE%-->">
+  <a href="#" class="settingLink optionLink" id="option-2">
+    <input type="checkbox" id="optionCb-2"/>
+    <span class="name">Show Admin Options</span>
+    <span class="desc">Display administrative options on block pages, such as allowing overrides.</span>
+  </a>
+</div>
+<div id="optionDiv-11" class="setting option lastSetting<!--%SHOW_SSL_BLOCK_STATE%-->">
+  <a href="#" class="settingLink optionLink" id="option-11">
+    <input type="checkbox" id="optionCb-11"/>
+    <span class="name">Show HTTPS Blocks</span>
+	<span class="desc">Display a dialog when HTTPS traffic is blocked.<br /><br />NOTE: Disabling this option prevents you from overriding HTTPS blocks.</span>
+  </a>
+</div>
+<div id="optionDiv-3" class="setting option lastSetting<!--%EA_STATE%-->">
+  <a href="#" class="settingLink optionLink" id="option-3">
+    <input type="checkbox" id="optionCb-3"/>
+    <span class="name">Enable Time Out</span>
+    <span class="desc">Disable Web access if too many pages are blocked within a given time period.</span>
+  </a>
+</div>
+<div id="eaSettingsDiv">If there are 
+<select id="blkLimit-dd">
+<!--%BLK_LIMIT_OPTIONS%-->
+</select>
+ blocked pages within 
+<select id="timePer-dd">
+<!--%TIME_PERIOD_OPTIONS%-->
+</select>
+, deny web access for 
+<select id="penPer-dd">
+<!--%PENALTY_PERIOD_OPTIONS%-->
+</select>
+</div><br><br>
+<div><div class="formDiv">
+  <span id="actionButtonRow-0" class="actionButtonRow">
+    <a class="okButton" id="y-saveChanges-0" href="#">Save</a>
+    <a class="cancelButton" id="n-saveChanges-0" href="#">Cancel</a>
+    <span class="clear"></span>
+  </span>
+</div></div>
+</div>

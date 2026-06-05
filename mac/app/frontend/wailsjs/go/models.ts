@@ -2,6 +2,7 @@ export namespace config {
 	
 	export class BlockedEntry {
 	    domain: string;
+	    category: string;
 	    count: number;
 	    // Go type: time
 	    lastSeen: any;
@@ -13,8 +14,75 @@ export namespace config {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.domain = source["domain"];
+	        this.category = source["category"];
 	        this.count = source["count"];
 	        this.lastSeen = this.convertValues(source["lastSeen"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DayRestriction {
+	    day: string;
+	    from: string;
+	    to: string;
+	    enabled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DayRestriction(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.day = source["day"];
+	        this.from = source["from"];
+	        this.to = source["to"];
+	        this.enabled = source["enabled"];
+	    }
+	}
+	export class FocusSite {
+	    domain: string;
+	    active: boolean;
+	    builtin: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FocusSite(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.domain = source["domain"];
+	        this.active = source["active"];
+	        this.builtin = source["builtin"];
+	    }
+	}
+	export class TimeRestrictions {
+	    enabled: boolean;
+	    days: DayRestriction[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TimeRestrictions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.days = this.convertValues(source["days"], DayRestriction);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -71,6 +139,7 @@ export namespace main {
 	    }
 	}
 	export class ContentSettings {
+	    filterLevel: string;
 	    blockAdultContent: boolean;
 	    blockImageSearch: boolean;
 	    blockYouTube: boolean;
@@ -82,6 +151,7 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filterLevel = source["filterLevel"];
 	        this.blockAdultContent = source["blockAdultContent"];
 	        this.blockImageSearch = source["blockImageSearch"];
 	        this.blockYouTube = source["blockYouTube"];
@@ -160,6 +230,7 @@ export namespace main {
 	    dbKeywords: number;
 	    inFocusMode: boolean;
 	    focusRemaining: number;
+	    inTimeRestriction: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Status(source);
@@ -178,6 +249,7 @@ export namespace main {
 	        this.dbKeywords = source["dbKeywords"];
 	        this.inFocusMode = source["inFocusMode"];
 	        this.focusRemaining = source["focusRemaining"];
+	        this.inTimeRestriction = source["inTimeRestriction"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

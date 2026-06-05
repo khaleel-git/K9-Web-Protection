@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -18,7 +19,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:         "K9 Web Protection",
+		Title:         "K10 Web Protection",
 		Width:         960,
 		Height:        660,
 		MinWidth:      960,
@@ -33,8 +34,11 @@ func main() {
 		OnStartup:  app.startup,
 		OnShutdown: app.shutdown,
 		OnBeforeClose: func(ctx context.Context) bool {
-			wailsruntime.WindowMinimise(ctx)
-			return true
+			if atomic.LoadInt32(&app.quitAuth) == 1 {
+				return false // authorised quit — let Wails close normally
+			}
+			wailsruntime.EventsEmit(ctx, "quit-requested")
+			return true // block close; frontend handles via modal
 		},
 		Bind:             []interface{}{app},
 		Mac: &mac.Options{
@@ -50,7 +54,7 @@ func main() {
 			WindowIsTranslucent:  true,
 		},
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: "com.k9webprotection.app",
+			UniqueId: "com.k10webprotection.app",
 			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
 				wailsruntime.WindowShow(app.ctx)
 				wailsruntime.WindowUnminimise(app.ctx)

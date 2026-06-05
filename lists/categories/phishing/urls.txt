@@ -1,0 +1,13 @@
+# Phishing URL patterns
+/phishing/
+/phish/
+/secure-login/
+/account-verify/
+/verify-account/
+/confirm-account/
+/update-billing/
+/suspended-account/
+/account-suspended/
+/login-verify/
+/verify-identity/
+/unlock-account/

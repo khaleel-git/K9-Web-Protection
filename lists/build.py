@@ -162,53 +162,148 @@ def to_alpha_json(items: list[str]) -> dict[str, list[str]]:
     return dict(sorted(buckets.items()))
 
 
-def write_db(domains: list[str], keywords: list[str], dest_dir: str):
-    os.makedirs(dest_dir, exist_ok=True)
-
-    with open(os.path.join(dest_dir, "domains.json"), "w") as f:
-        json.dump(to_alpha_json(domains), f, indent=2)
-
-    with open(os.path.join(dest_dir, "multi-words.json"), "w") as f:
-        json.dump(to_alpha_json(keywords), f, indent=2)
-
-    with open(os.path.join(dest_dir, "urls.json"), "w") as f:
-        json.dump({}, f, indent=2)
-
-    print(f"  Written to {dest_dir}")
-    print(f"    domains  : {len(domains):,}")
-    print(f"    keywords : {len(keywords):,}")
-
-
-def build(level_name: str):
-    print(f"\nBuilding level: {level_name}")
-    categories = load_level(level_name)
-    if not categories:
-        print("  No categories — writing empty database.")
-        write_db([], [], DB_DIR)
-        return
-    print(f"  Categories ({len(categories)}): {', '.join(categories)}")
-    domains  = load_domains(categories)
-    keywords = load_keywords(categories)
-    write_db(domains, keywords, DB_DIR)
-
-
-def print_stats():
-    print(f"\n{'Category':<30} {'File domains':>14} {'Embedded cap':>14}")
-    print("-" * 62)
-    total_file = total_embed = 0
-    for cat in sorted(os.listdir(CAT_DIR)):
+def build_category_db(dest_dir: str):
+    """Build a category-keyed domains.json with ALL categories for runtime level filtering."""
+    print("\nBuilding category-aware database (all categories)…")
+    all_cats: dict[str, list[str]] = {}
+    total = 0
+    for cat in sorted(CATEGORY_CAPS.keys()):
         path = os.path.join(CAT_DIR, cat, "domains.txt")
         if not os.path.exists(path):
             continue
+        seen: set[str] = set()
+        domains: list[str] = []
         with open(path) as f:
-            count = sum(1 for l in f if l.strip() and not l.startswith("#"))
+            for line in f:
+                d = line.strip().lower()
+                if not d or d.startswith("#"):
+                    continue
+                for pfx in ("https://", "http://", "www."):
+                    if d.startswith(pfx):
+                        d = d[len(pfx):]
+                d = d.rstrip("/")
+                if d and d not in seen:
+                    seen.add(d)
+                    domains.append(d)
         cap = CATEGORY_CAPS.get(cat, 0)
-        embed = min(count, cap) if cap else count
-        print(f"  {cat:<28} {count:>14,} {embed:>14,}")
-        total_file  += count
-        total_embed += embed
-    print("-" * 62)
-    print(f"  {'TOTAL':<28} {total_file:>14,} {total_embed:>14,}")
+        if cap and len(domains) > cap:
+            domains = _even_sample(domains, cap)
+        all_cats[cat] = sorted(domains)
+        total += len(domains)
+        print(f"  {cat:<30} {len(domains):>10,}")
+
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(os.path.join(dest_dir, "domains.json"), "w") as f:
+        json.dump(all_cats, f, separators=(',', ':'))
+    print(f"\n  Total domains : {total:,}")
+    print(f"  Written to    : {dest_dir}/domains.json")
+
+
+def _read_patterns(cat: str, filename: str) -> list[str]:
+    """Read non-empty, non-comment lines from a category file."""
+    path = os.path.join(CAT_DIR, cat, filename)
+    if not os.path.exists(path):
+        return []
+    out: list[str] = []
+    with open(path) as f:
+        for line in f:
+            p = line.strip().lower()
+            if p and not p.startswith("#"):
+                out.append(p)
+    return out
+
+
+def build_category_urls(dest_dir: str):
+    """Build category-keyed urls.json from each category's urls.txt.
+
+    urls.txt contains full-URL substring patterns including TLD patterns
+    (.xxx, .porn) and path/query patterns (/porn/, ?q=porn).
+    Checked against the full raw URL in the proxy.
+    """
+    print("\nBuilding category URL patterns (urls.json)…")
+    result: dict[str, list[str]] = {}
+    total = 0
+    for cat in sorted(CATEGORY_CAPS.keys()):
+        patterns = _read_patterns(cat, "urls.txt")
+        if patterns:
+            result[cat] = sorted(set(patterns))
+            total += len(result[cat])
+            print(f"  {cat:<30} {len(result[cat]):>8,} url patterns")
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(os.path.join(dest_dir, "urls.json"), "w") as f:
+        json.dump(result, f, separators=(',', ':'))
+    print(f"\n  Total url patterns : {total:,}")
+    print(f"  Written to         : {dest_dir}/urls.json")
+    return total
+
+
+def build_url_patterns(dest_dir: str):
+    """Build category-keyed url-patterns.json from each category's url-patterns.txt.
+
+    url-patterns.txt contains keyword wildcards checked against URL path+query.
+    E.g. 'porn' blocks any URL whose path/query contains 'porn'.
+    Category-aware: only fires for categories active at the current filter level.
+    """
+    print("\nBuilding URL keyword patterns (url-patterns.json)…")
+    result: dict[str, list[str]] = {}
+    total = 0
+    for cat in sorted(CATEGORY_CAPS.keys()):
+        patterns = _read_patterns(cat, "url-patterns.txt")
+        if patterns:
+            result[cat] = sorted(set(patterns))
+            total += len(result[cat])
+            print(f"  {cat:<30} {len(result[cat]):>8,} keyword patterns")
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(os.path.join(dest_dir, "url-patterns.json"), "w") as f:
+        json.dump(result, f, separators=(',', ':'))
+    print(f"\n  Total keyword patterns : {total:,}")
+    print(f"  Written to             : {dest_dir}/url-patterns.json")
+    return total
+
+
+def write_page_keywords(dest_dir: str):
+    """Write multi-words.json (page content keyword phrases from all categories)."""
+    all_cats = list(CATEGORY_CAPS.keys())
+    keywords = load_keywords(all_cats)
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(os.path.join(dest_dir, "multi-words.json"), "w") as f:
+        json.dump(to_alpha_json(keywords), f, indent=2)
+    print(f"  page keywords : {len(keywords):,}")
+    return len(keywords)
+
+
+def build(level_name: str):
+    """Build all embedded database files."""
+    print(f"\nNote: level '{level_name}' ignored — building full category-aware DB.")
+    build_category_db(DB_DIR)
+    print()
+    n_urls     = build_category_urls(DB_DIR)
+    n_patterns = build_url_patterns(DB_DIR)
+    print()
+    n_keywords = write_page_keywords(DB_DIR)
+    print(f"\n  Summary: {n_urls:,} url patterns | {n_patterns:,} keyword patterns | {n_keywords:,} page keywords")
+
+
+def print_stats():
+    print(f"\n{'Category':<30} {'Domains':>10} {'URLs':>8} {'Patterns':>10} {'Keywords':>10}")
+    print("-" * 72)
+    for cat in sorted(os.listdir(CAT_DIR)):
+        cat_dir = os.path.join(CAT_DIR, cat)
+        if not os.path.isdir(cat_dir):
+            continue
+        def count_file(fn):
+            p = os.path.join(cat_dir, fn)
+            if not os.path.exists(p):
+                return 0
+            with open(p) as f:
+                return sum(1 for l in f if l.strip() and not l.startswith("#"))
+        d = count_file("domains.txt")
+        u = count_file("urls.txt")
+        p = count_file("url-patterns.txt")
+        k = count_file("keywords.txt")
+        if d or u or p or k:
+            print(f"  {cat:<28} {d:>10,} {u:>8,} {p:>10,} {k:>10,}")
+    print("-" * 72)
 
 
 if __name__ == "__main__":

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"k9webprotection/internal/config"
-	"k9webprotection/internal/database"
+	"k10webprotection/internal/config"
+	"k10webprotection/internal/database"
 )
 
 const blockPageTpl = `<!DOCTYPE html>
@@ -132,7 +132,13 @@ func (p *Proxy) handle(w http.ResponseWriter, r *http.Request) {
 
 	host := hostname(r.Host)
 
-	// Allow-list always wins — pass straight through
+	// Built-in critical services (OS updates, safe-browsing, OCSP) — never block
+	if IsBuiltinAllowed(host) {
+		p.passThrough(w, r)
+		return
+	}
+
+	// User allow-list wins
 	if p.cfg.IsAllowed(host) {
 		p.passThrough(w, r)
 		return
@@ -146,55 +152,107 @@ func (p *Proxy) handle(w http.ResponseWriter, r *http.Request) {
 
 	// ── Bypass prevention (always active) ────────────────────────────────────
 
-	// Block web proxy / anonymizer services regardless of other settings
-	if isWebProxy(host, r.URL.String()) {
+	rawURL := r.URL.String()
+
+	if isWebProxy(host, rawURL) {
 		p.block(w, r, host)
 		return
 	}
 
-	// Block direct-IP access when adult content filtering is on
-	// (browsing to a raw IP is the easiest way to bypass domain-based blocks)
-	if p.cfg.BlockAdultContent && isDirectIP(host) {
-		p.block(w, r, host)
-		return
-	}
-
-	// ── Content toggles ───────────────────────────────────────────────────────
-
-	// Block YouTube
-	if p.cfg.BlockYouTube && isYouTube(host) {
-		p.block(w, r, host)
-		return
-	}
-
-	// Block image / video search
-	if p.cfg.BlockImageSearch && isImageSearch(host, r.URL.String()) {
-		p.block(w, r, host)
-		return
-	}
-
-	// Built-in adult content database (respects master toggle)
-	if p.cfg.BlockAdultContent {
-		if p.db.BlocksDomain(host) {
-			p.block(w, r, host)
-			return
-		}
-		if r.Method != http.MethodConnect {
-			rawURL := r.URL.String()
-			if p.db.BlocksURL(rawURL) || p.db.BlocksKeyword(rawURL) {
+	// Detect base64-encoded redirect destinations (?__cpo=, ?url=, etc.).
+	// Catches e.g. azureserv.com/?__cpo=aHR0cHM6Ly93d3cueG54eC5jb20 → xnxx.com.
+	if decodedHost := DecodeRedirectHost(rawURL); decodedHost != "" {
+		if !IsBuiltinAllowed(decodedHost) && !p.cfg.IsAllowed(decodedHost) {
+			if p.db.BlocksDomainInCategories(decodedHost, LevelCategories[p.cfg.FilterLevel]) {
 				p.block(w, r, host)
 				return
 			}
 		}
 	}
 
-	// User keyword matching (always active regardless of adult toggle)
-	if r.Method != http.MethodConnect && p.cfg.UserKeywordMatch(r.URL.String()) {
+	// ── Focus mode — block social media sites ────────────────────────────────
+
+	if p.cfg.FocusBlocks(host) {
 		p.block(w, r, host)
 		return
 	}
 
-	// SafeSearch MITM — intercept Google/Bing CONNECT tunnels to block "Off" and inject safe=active
+	// ── Level-based filtering ─────────────────────────────────────────────────
+
+	level := p.cfg.FilterLevel
+
+	if level == LevelMonitor {
+		// Monitor: no blocking, pass through
+	} else {
+		cats := LevelCategories[level] // nil for custom/unknown → blocks nothing via DB
+
+		// Direct-IP bypass prevention (all levels except monitor/custom)
+		if level != LevelCustom && level != "" && isDirectIP(host) {
+			p.block(w, r, host)
+			return
+		}
+
+		// YouTube (high level only, or custom toggle)
+		if (level == LevelHigh || (level == LevelCustom || level == "") && p.cfg.BlockYouTube) && isYouTube(host) {
+			p.block(w, r, host)
+			return
+		}
+
+		// Image search (high level only, or custom toggle)
+		if (level == LevelHigh || (level == LevelCustom || level == "") && p.cfg.BlockImageSearch) && isImageSearch(host, rawURL) {
+			p.block(w, r, host)
+			return
+		}
+
+		// Database domain lookup (category-aware for named levels, all-category for custom)
+		if len(cats) > 0 || level == LevelCustom || level == "" {
+			dbCats := cats
+			if (level == LevelCustom || level == "") && p.cfg.BlockAdultContent {
+				dbCats = nil // nil = all categories
+			}
+			if p.db.BlocksDomainInCategories(host, dbCats) {
+				p.block(w, r, host)
+				return
+			}
+			// URL-level checks (HTTP only — CONNECT is an opaque tunnel)
+			if r.Method != http.MethodConnect {
+				// Full-URL substring patterns (.xxx TLD, /porn/ path, ?q=porn query)
+				if p.db.BlocksURLInCategories(rawURL, dbCats) {
+					p.block(w, r, host)
+					return
+				}
+				// Keyword wildcards checked against path+query only (host covered above)
+				urlPath := r.URL.Path
+				if r.URL.RawQuery != "" {
+					urlPath += "?" + r.URL.RawQuery
+				}
+				if p.db.BlocksURLPatternInCategories(urlPath, dbCats) {
+					p.block(w, r, host)
+					return
+				}
+				// Page-content keyword phrases
+				if p.db.BlocksKeyword(rawURL) {
+					p.block(w, r, host)
+					return
+				}
+			}
+		}
+	}
+
+	// User keyword matching (always active).
+	// For HTTPS (CONNECT) we only have the hostname; for HTTP we have the full URL.
+	{
+		kwTarget := rawURL
+		if r.Method == http.MethodConnect {
+			kwTarget = host
+		}
+		if p.cfg.UserKeywordMatch(kwTarget) {
+			p.block(w, r, host)
+			return
+		}
+	}
+
+	// SafeSearch MITM
 	if r.Method == http.MethodConnect && p.cfg.SafeSearch && safeSearchDomains[host] {
 		p.safeSearchIntercept(w, r, host)
 		return
@@ -211,7 +269,7 @@ func (p *Proxy) passThrough(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// block sends the K9 block page (or a plain 403 for CONNECT).
+// block sends the K10 block page (or a plain 403 for CONNECT).
 func (p *Proxy) block(w http.ResponseWriter, r *http.Request, domain string) {
 	if p.onBlock != nil {
 		go p.onBlock(domain) // async so it never delays the response
@@ -310,93 +368,4 @@ func hostname(host string) string {
 		return strings.ToLower(strings.TrimSpace(host))
 	}
 	return strings.ToLower(h)
-}
-
-var youtubeDomains = []string{
-	"youtube.com", "youtu.be", "youtube-nocookie.com",
-	"youtubei.googleapis.com", "yt3.ggpht.com",
-}
-
-func isYouTube(host string) bool {
-	for _, d := range youtubeDomains {
-		if host == d || strings.HasSuffix(host, "."+d) {
-			return true
-		}
-	}
-	return false
-}
-
-var imageSearchPatterns = []string{
-	"google.com/imghp", "google.com/search?", "/tbm=isch",
-	"bing.com/images", "images.google.",
-	"search.yahoo.com/image", "duckduckgo.com/?ia=images",
-	"yandex.com/images",
-}
-
-func isImageSearch(host, rawURL string) bool {
-	combined := strings.ToLower(host + rawURL)
-	for _, p := range imageSearchPatterns {
-		if strings.Contains(combined, p) {
-			return true
-		}
-	}
-	return false
-}
-
-// ── Web proxy / bypass detection ─────────────────────────────────────────────
-
-// Known web proxy services that let users reach blocked content.
-var knownProxyDomains = []string{
-	"proxyium.com", "croxyproxy.com", "kproxy.com", "hide.me",
-	"hidester.com", "hidemyname.org", "4everproxy.com", "proxfree.com",
-	"filterbypass.me", "anonymouse.org", "proxysite.com", "unblocker.cc",
-	"zend2.com", "anonymiz.com", "websurf.in", "spys.one",
-	"proxy-n-vpn.com", "ninja-web.net", "1proxy.de", "hidemy.name",
-	"whoer.net", "freeproxy.io", "free-proxy.cz", "proxiesforanonymous.com",
-	"unblockvideos.com", "unblockasites.com", "bypassblocker.com",
-	"ultrasurf.us", "browsec.com", "anonymouseproxy.com",
-}
-
-// URL parameter patterns used by web proxies to pass through the target URL.
-var proxyURLParams = []string{
-	"?url=http", "&url=http", "?site=http", "&site=http",
-	"?u=http", "&u=http", "?go=http", "?proxy=http",
-}
-
-// isWebProxy returns true if the request looks like a web proxy bypass attempt.
-func isWebProxy(host, rawURL string) bool {
-	h := strings.ToLower(host)
-
-	// Exact match or subdomain of a known proxy service
-	for _, d := range knownProxyDomains {
-		if h == d || strings.HasSuffix(h, "."+d) {
-			return true
-		}
-	}
-
-	// Domain name contains obvious bypass keywords
-	for _, kw := range []string{"proxy", "unblock", "bypass", "anonymize", "hideip", "hidemy", "anonym"} {
-		if strings.Contains(h, kw) {
-			return true
-		}
-	}
-
-	// URL parameters that route traffic through a web proxy
-	lower := strings.ToLower(rawURL)
-	for _, p := range proxyURLParams {
-		if strings.Contains(lower, p) {
-			return true
-		}
-	}
-	return false
-}
-
-// isDirectIP returns true when the host is a public IP address (no domain name).
-// Private/loopback/link-local IPs (router admin, NAS, etc.) are always allowed.
-func isDirectIP(host string) bool {
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return false
-	}
-	return !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast()
 }

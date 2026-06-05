@@ -1,13 +1,13 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "K9 Web Protection",
-  "outputfilename": "K9WebProtection",
+  "name": "K10 Web Protection",
+  "outputfilename": "K10WebProtection",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "K9 Web Protection",
+    "name": "K10 Web Protection",
     "email": ""
   }
 }

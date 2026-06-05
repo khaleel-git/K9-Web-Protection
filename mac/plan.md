@@ -1,138 +1,94 @@
-# K9 Web Protection — Feature Plan
-
-Frontend is complete and wired to existing backend APIs where possible. Items below are features visible in the UI that need backend implementation, or existing wiring that needs fixing.
+# K10 Web Protection — Feature Plan
 
 **Status legend:** ✅ Done · 🔧 Frontend only (backend needed) · ❌ Not started
 
 ---
 
-## Setup Sidebar — All 9 Items ✅
+## Setup Sidebar — All 9 Items
 
-All sidebar items are present and navigate to their pages:
 1. Web Categories to Block ✅
-2. Time Restrictions 🔧 (frontend shell only)
+2. Time Restrictions ✅ (per-day schedule, auto-enables Focus Mode)
 3. Web Site Exceptions ✅
-4. Blocking Effects 🔧 (frontend shell only)
-5. URL Keywords ✅
+4. Blocking Effects 🔧 (custom message wired; styled block page already in proxy)
+5. URL Keywords ✅ (HTTP + HTTPS)
 6. Safe Search ✅
-7. Advanced ✅ (proxy port + autostart wired to Go)
+7. Advanced ✅ (proxy port + autostart)
 8. Password/Email ✅
-9. K10 Update 🔧 (frontend shell only)
+9. K10 Update 🔧 (shows DB sizes; Check Now is a stub)
 
 ---
 
-## 1. Recent Blocked Activity Log ❌
+## Focus Mode ✅
 
-**Dashboard:** "Recent Blocked Activity" panel shows top blocked domains without timestamps or category badges. Needs a proper activity log.
-
-**Backend needed:**
-- Add ring-buffer in config: `type ActivityEntry { Time time.Time; Domain string; Category string }`
-- Record in proxy `onBlock` callback
-- Add `GetRecentActivity() []ActivityEntry` on App
-
-**Frontend:** `renderRecentActivity()` in `main.js` — replace domain heuristics with `go().GetRecentActivity()`.
+Separate top-nav tab. Blocks active social-media sites. User can toggle each site on/off, add custom sites, and set a countdown timer. Also triggers automatically during Time Restriction windows.
 
 ---
 
-## 2. Per-Category Block Counts (Top Blocked Categories Bar Chart) ❌
+## Top Blocked Categories Chart ✅
 
-**Dashboard:** Bar chart shows top blocked *domains*, not semantic categories (Pornography, Malware, Gambling, etc.).
-
-**Backend needed:**
-- Map each blocked domain to its category at block time (proxy or DB layer)
-- Store per-category hit counts in `config.Stats`
-- Add `TopCategories []CategoryEntry` to `Status`
-
-**Frontend:** `renderTopCategoriesChart()` — use `s.topCategories`.
+Category is now stored at block time via `database.CategoryFor()` lookup — no more regex guessing. All 29 database categories have display names (Pornography, Adult, Nudity, Alt. Sexuality, Gambling, Malware, P2P / Torrents, Proxy Bypass, Violence / Hate, Extreme Content, Illegal Drugs, Dating, Hacking, Phishing, Suspicious, Alcohol, Tobacco, Weapons, Abortion, Messaging, Social Media, Forums, Image Search, Alt. Spirituality, LGBT, Intimate Apparel, Sex Education, Personal Pages, Unrated).
 
 ---
 
-## 3. Per-Category Activity Tagging ❌
+## Recent Activity Tagging ✅
 
-Blocked activity rows need real category labels, not regex heuristics on domain names.
-
-**Backend needed:** Same as item 2 — store `Category string` in `ActivityEntry`.
-
-**Frontend:** `renderRecentActivity()` — use `entry.category` directly.
+Activity rows use the stored `entry.category` field (same database lookup), with `domainToCategory()` regex as fallback for older entries.
 
 ---
 
-## 4. Filter Level Persistence ❌
+## Time Restrictions ✅
 
-**Dashboard:** Filter Level card always shows "Default" or "Minimal" based on `blockAdultContent` bool. Doesn't reflect High/Moderate/Custom selections.
-
-**Backend needed:**
-- Add `FilterLevel string` to `Config`
-- Set it in `SaveContentSettings`
-- Return it in `GetContentSettings()` or `GetStatus()`
-
-**Frontend:** `loadDashboard()` — use `cs.filterLevel` instead of the boolean check.
+Per-day schedule (Mon–Sun). Each day has a From/Until time window and an Enabled toggle. When the current time falls inside a window, Focus Mode activates automatically (social-media blocking only). Overnight windows (e.g. 22:00→06:00) are supported. Defaults: Mon–Fri 08:00–22:00 enabled, Sat–Sun disabled.
 
 ---
 
-## 5. Time Restrictions ❌
+## 1. K10 Update / Auto-Update ❌
 
-**Setup → Time Restrictions:** Page shows a per-day time picker UI but saving does nothing.
-
-**Backend needed:**
-- Add `TimeRestrictions map[string][2]string` to Config (e.g. `"Monday": ["08:00","22:00"]`)
-- Add `TimeEnabled bool` to Config
-- Proxy checks `time.Now()` against schedule before forwarding requests
-- Add `GetTimeRestrictions()` / `SaveTimeRestrictions(schedule, enabled)` on App
-
-**Frontend:** Wire `Save` button to `go().SaveTimeRestrictions(...)`.
-
----
-
-## 6. Blocking Effects — Custom Block Page ❌
-
-**Setup → Blocking Effects:** Shows dropdowns but only the custom message field is wired to `SaveAdvancedSettings`.
-
-**Backend needed:**
-- Proxy currently returns a plain-text response on blocked requests
-- Implement a styled HTML block page (embed as template)
-- Respect `BlockedMessage` from config as custom message text
-- Support "Blank Page" option (empty 200 response)
-
-**Frontend:** Already wired — `eff-custom-msg` saves via `go().SaveAdvancedSettings`.
-
----
-
-## 7. K10 Update / Auto-Update ❌
-
-**Setup → K10 Update:** Page shows database sizes but "Check Now" is a stub.
+**Setup → K10 Update:** "Check Now" is a stub.
 
 **Backend needed:**
 - `GetVersion() VersionInfo { Version, DBDate, DBDomains string }` on App
 - `CheckForUpdate() (hasUpdate bool, message string, err error)` — HTTP call to a version endpoint
-- Optional: auto-download and apply updated blocklist database
+- Optional: auto-download updated blocklist
 
-**Frontend:** Wire `Check Now` button to `go().CheckForUpdate()` and update UI with result.
-
----
-
-## 8. Enable/Disable UX Polish 🔧
-
-**Current state:** When protection is inactive, a warning bar appears in the Home dashboard with "Enable Protection". The header Logout button opens the disable modal.
-
-**Improvements needed (frontend):**
-- Rename "Logout" to something clearer ("Lock Admin" or "Disable…")
-- Add a confirmation screen distinguishing "lock the admin panel" from "disable protection"
-- Consider a password-prompt in the header for re-enabling (prevents casual bypassing)
+**Frontend:** Wire "Check Now" button to `go().CheckForUpdate()`.
 
 ---
 
-## 9. Password-Protected Settings Saves 🔧
+## 2. Blocking Effects — Block Page Customisation 🔧
 
-**Current state:** `SaveContentSettings` and `SaveAdvancedSettings` are called with `''` as the password. This works when no password is set but silently fails when a password IS configured.
+Styled HTML block page is already served by the proxy. The custom message field is wired to `SaveAdvancedSettings`.
 
-**Fix needed (frontend):**
-- Before calling any `Save*` method that requires password, call `go().HasPassword()`
-- If true, prompt user for password and pass it as first arg
-- Show error notification if password is wrong
+**Remaining (frontend):**
+- "Blank Page" option (send empty 200)
+- Theme/colour picker if desired
 
 ---
 
-## 10. Safe Search Page — Load on Navigate ✅
+## 3. Enable/Disable UX Polish 🔧
 
-Fixed: `loadSafeSearch()` is called when navigating to the Safe Search page, populating the checkbox from `GetContentSettings()`.
+- Rename "Logout" button to "Lock Admin" or "Disable…"
+- Distinguish "lock admin panel" from "disable protection" in the confirmation dialog
+- Password re-prompt in header for re-enabling
+
+---
+
+## 4. Password-Protected Settings Saves 🔧
+
+`SaveContentSettings` and `SaveAdvancedSettings` are called with `''` as password.
+
+**Fix (frontend):**
+- Before any `Save*` call, check `go().HasPassword()`
+- If set, prompt user and pass password as first arg
+- Show error on wrong password
+
+---
+
+## 5. Filter Level Persistence ❌
+
+Dashboard "Filter Level" card does not reflect High/Moderate/Custom selections after restart.
+
+**Backend needed:**
+- `FilterLevel string` already in Config — ensure it round-trips via `GetContentSettings()` / `GetStatus()`
+
+**Frontend:** `loadDashboard()` — use `cs.filterLevel` directly.

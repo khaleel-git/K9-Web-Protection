@@ -40,13 +40,13 @@ var (
 // CACertPath returns the path to the K10 root CA certificate.
 func CACertPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".k9webprotection", "ca.crt")
+	return filepath.Join(home, ".k10webprotection", "ca.crt")
 }
 
 func initMITM() {
 	mitmOnce.Do(func() {
 		home, _ := os.UserHomeDir()
-		dir := filepath.Join(home, ".k9webprotection")
+		dir := filepath.Join(home, ".k10webprotection")
 		os.MkdirAll(dir, 0700)
 
 		keyPath := filepath.Join(dir, "ca.key")

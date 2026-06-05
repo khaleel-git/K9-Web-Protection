@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,8 +19,30 @@ type Stats struct {
 
 type BlockedEntry struct {
 	Domain   string    `json:"domain"`
+	Category string    `json:"category"`
 	Count    int       `json:"count"`
 	LastSeen time.Time `json:"lastSeen"`
+}
+
+// DayRestriction defines the allowed internet window for one weekday.
+type DayRestriction struct {
+	Day     string `json:"day"`     // "monday" … "sunday"
+	From    string `json:"from"`    // "HH:MM" 24-hour
+	To      string `json:"to"`      // "HH:MM" 24-hour
+	Enabled bool   `json:"enabled"` // false = this day is skipped
+}
+
+// TimeRestrictions holds the weekly schedule for auto Focus Mode.
+type TimeRestrictions struct {
+	Enabled bool             `json:"enabled"`
+	Days    []DayRestriction `json:"days"`
+}
+
+// FocusSite is a social media domain that gets blocked when Focus Mode is on.
+type FocusSite struct {
+	Domain  string `json:"domain"`
+	Active  bool   `json:"active"`  // block this site while focus mode is running
+	Builtin bool   `json:"builtin"` // true = shipped by default, cannot be deleted
 }
 
 type Config struct {
@@ -31,10 +55,11 @@ type Config struct {
 	UserKeywords  []string `json:"userKeywords"`
 
 	// Content blocking toggles
-	BlockAdultContent bool `json:"blockAdultContent"`
-	BlockImageSearch  bool `json:"blockImageSearch"`
-	BlockYouTube      bool `json:"blockYouTube"`
-	SafeSearch        bool `json:"safeSearch"`
+	FilterLevel       string `json:"filterLevel"` // high|default|moderate|minimal|monitor|custom
+	BlockAdultContent bool   `json:"blockAdultContent"`
+	BlockImageSearch  bool   `json:"blockImageSearch"`
+	BlockYouTube      bool   `json:"blockYouTube"`
+	SafeSearch        bool   `json:"safeSearch"`
 
 	// Advanced blocking
 	DisableDelayHours  int        `json:"disableDelayHours"` // 0 = off
@@ -42,7 +67,9 @@ type Config struct {
 	BlockedMessage     string     `json:"blockedMessage"`
 
 	// Focus Mode
-	FocusModeUntil time.Time `json:"focusModeUntil"`
+	FocusModeUntil   time.Time        `json:"focusModeUntil"`
+	FocusSites       []FocusSite      `json:"focusSites"`
+	TimeRestrictions TimeRestrictions `json:"timeRestrictions"`
 
 	// System
 	PasswordHash string `json:"passwordHash"`
@@ -53,7 +80,7 @@ type Config struct {
 
 func configDir() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".k9webprotection")
+	return filepath.Join(home, ".k10webprotection")
 }
 
 func Load() *Config {
@@ -79,7 +106,46 @@ func Load() *Config {
 		json.Unmarshal(data, c)
 		c.path = path
 	}
+	if len(c.FocusSites) == 0 {
+		c.FocusSites = defaultFocusSites()
+	}
+	if len(c.TimeRestrictions.Days) == 0 {
+		c.TimeRestrictions.Days = defaultDayRestrictions()
+	}
 	return c
+}
+
+func defaultDayRestrictions() []DayRestriction {
+	type entry struct{ day, from, to string; en bool }
+	rows := []entry{
+		{"monday", "08:00", "22:00", true},
+		{"tuesday", "08:00", "22:00", true},
+		{"wednesday", "08:00", "22:00", true},
+		{"thursday", "08:00", "22:00", true},
+		{"friday", "08:00", "22:00", true},
+		{"saturday", "10:00", "22:00", false},
+		{"sunday", "10:00", "22:00", false},
+	}
+	out := make([]DayRestriction, len(rows))
+	for i, r := range rows {
+		out[i] = DayRestriction{Day: r.day, From: r.from, To: r.to, Enabled: r.en}
+	}
+	return out
+}
+
+func defaultFocusSites() []FocusSite {
+	domains := []string{
+		"facebook.com", "instagram.com", "x.com", "twitter.com",
+		"tiktok.com", "snapchat.com", "reddit.com", "pinterest.com",
+		"linkedin.com", "youtube.com", "discord.com", "twitch.tv",
+		"threads.net", "tumblr.com", "whatsapp.com", "telegram.org",
+		"bereal.com",
+	}
+	out := make([]FocusSite, len(domains))
+	for i, d := range domains {
+		out[i] = FocusSite{Domain: d, Active: true, Builtin: true}
+	}
+	return out
 }
 
 func (c *Config) Save() error {
@@ -113,6 +179,115 @@ func (c *Config) SetFocusMode(minutes int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.FocusModeUntil = time.Now().Add(time.Duration(minutes) * time.Minute)
+}
+
+func (c *Config) StopFocusMode() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.FocusModeUntil = time.Time{}
+}
+
+// ── Focus sites ───────────────────────────────────────────────────────────────
+
+func (c *Config) GetFocusSites() []FocusSite {
+	c.mu.RLock(); defer c.mu.RUnlock()
+	out := make([]FocusSite, len(c.FocusSites))
+	copy(out, c.FocusSites)
+	return out
+}
+
+func (c *Config) SetFocusSiteActive(domain string, active bool) {
+	c.mu.Lock(); defer c.mu.Unlock()
+	for i := range c.FocusSites {
+		if c.FocusSites[i].Domain == domain {
+			c.FocusSites[i].Active = active
+			return
+		}
+	}
+}
+
+func (c *Config) AddFocusSite(domain string) {
+	c.mu.Lock(); defer c.mu.Unlock()
+	for _, s := range c.FocusSites {
+		if s.Domain == domain { return }
+	}
+	c.FocusSites = append(c.FocusSites, FocusSite{Domain: domain, Active: true, Builtin: false})
+}
+
+func (c *Config) RemoveFocusSite(domain string) {
+	c.mu.Lock(); defer c.mu.Unlock()
+	out := c.FocusSites[:0]
+	for _, s := range c.FocusSites {
+		if s.Domain == domain && !s.Builtin { continue }
+		out = append(out, s)
+	}
+	c.FocusSites = out
+}
+
+// FocusBlocks returns true when the host should be blocked — either manual
+// focus mode is running or the current time falls inside a time restriction.
+func (c *Config) FocusBlocks(host string) bool {
+	c.mu.RLock(); defer c.mu.RUnlock()
+	if !time.Now().Before(c.FocusModeUntil) && !c.inTimeRestriction() {
+		return false
+	}
+	for _, s := range c.FocusSites {
+		if !s.Active { continue }
+		if host == s.Domain || hasSuffix(host, "."+s.Domain) {
+			return true
+		}
+	}
+	return false
+}
+
+// InTimeRestriction reports whether the current time falls inside a scheduled
+// restriction window (caller-safe — acquires read lock).
+func (c *Config) InTimeRestriction() bool {
+	c.mu.RLock(); defer c.mu.RUnlock()
+	return c.inTimeRestriction()
+}
+
+// inTimeRestriction is the lock-free inner check (call with read lock held).
+func (c *Config) inTimeRestriction() bool {
+	if !c.TimeRestrictions.Enabled { return false }
+	wd := [7]string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+	now := time.Now()
+	weekday := wd[now.Weekday()]
+	cur := now.Hour()*60 + now.Minute()
+	for _, d := range c.TimeRestrictions.Days {
+		if !d.Enabled || d.Day != weekday { continue }
+		from := hhmm(d.From)
+		to := hhmm(d.To)
+		if from < to {
+			if cur >= from && cur < to { return true }
+		} else if from > to { // overnight window e.g. 22:00 → 06:00
+			if cur >= from || cur < to { return true }
+		}
+	}
+	return false
+}
+
+func hhmm(s string) int {
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) != 2 { return 0 }
+	h, _ := strconv.Atoi(parts[0])
+	m, _ := strconv.Atoi(parts[1])
+	return h*60 + m
+}
+
+// ── Time restrictions CRUD ────────────────────────────────────────────────────
+
+func (c *Config) GetTimeRestrictions() TimeRestrictions {
+	c.mu.RLock(); defer c.mu.RUnlock()
+	tr := TimeRestrictions{Enabled: c.TimeRestrictions.Enabled}
+	tr.Days = make([]DayRestriction, len(c.TimeRestrictions.Days))
+	copy(tr.Days, c.TimeRestrictions.Days)
+	return tr
+}
+
+func (c *Config) SaveTimeRestrictions(tr TimeRestrictions) {
+	c.mu.Lock(); defer c.mu.Unlock()
+	c.TimeRestrictions = tr
 }
 
 // ── Disable delay ─────────────────────────────────────────────────────────────
@@ -236,7 +411,7 @@ func (c *Config) UserKeywordMatch(url string) bool {
 // already counted within this window — one visit = one count.
 const dedupWindow = 5 * time.Second
 
-func (c *Config) IncrementBlocked(domain string) {
+func (c *Config) IncrementBlocked(domain, category string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -253,6 +428,9 @@ func (c *Config) IncrementBlocked(domain string) {
 			}
 			c.Stats.TopBlocked[i].Count++
 			c.Stats.TopBlocked[i].LastSeen = now
+			if category != "" {
+				c.Stats.TopBlocked[i].Category = category
+			}
 			c.Stats.TotalBlocked++
 			c.Stats.BlockedToday++
 			// Move to front so the list stays newest-first
@@ -266,7 +444,7 @@ func (c *Config) IncrementBlocked(domain string) {
 	// New domain — prepend so newest is always first
 	c.Stats.TotalBlocked++
 	c.Stats.BlockedToday++
-	c.Stats.TopBlocked = append([]BlockedEntry{{Domain: domain, Count: 1, LastSeen: now}}, c.Stats.TopBlocked...)
+	c.Stats.TopBlocked = append([]BlockedEntry{{Domain: domain, Category: category, Count: 1, LastSeen: now}}, c.Stats.TopBlocked...)
 	if len(c.Stats.TopBlocked) > 20 {
 		c.Stats.TopBlocked = c.Stats.TopBlocked[:20]
 	}

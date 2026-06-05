@@ -1,4 +1,4 @@
-/* K9 Web Protection — Professional UI (100% match k10_web_protection_professional.html) */
+/* K10 Web Protection — Professional UI (100% match k10_web_protection_professional.html) */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
@@ -45,13 +45,13 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 6px 14px;
-  -webkit-app-region: drag;
+  --wails-draggable: drag;
 }
 .k9-header button,
 .k9-header a,
 .k9-header input,
 .status-badge {
-  -webkit-app-region: no-drag;
+  --wails-draggable: no-drag;
 }
 
 .k9-logo-area { display: flex; align-items: center; gap: 10px; }

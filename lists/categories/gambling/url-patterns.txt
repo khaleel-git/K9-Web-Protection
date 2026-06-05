@@ -1,0 +1,21 @@
+# K9 URL Keyword Patterns — Gambling
+# Compound/specific patterns that appear in gambling URLs but not news/sports coverage.
+
+online-casino
+casino-games
+casino-bonus
+casino-slots
+sports-betting
+bet-online
+online-betting
+live-betting
+free-bet
+betting-tips
+gambling-site
+poker-online
+online-poker
+blackjack-online
+roulette-online
+slot-machine
+free-spins
+jackpot-win

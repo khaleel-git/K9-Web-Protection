@@ -9,11 +9,11 @@ import (
 
 const (
 	hostsFile   = "/etc/hosts"
-	markerStart = "# K9-Web-Protection START"
-	markerEnd   = "# K9-Web-Protection END"
+	markerStart = "# K10-Web-Protection START"
+	markerEnd   = "# K10-Web-Protection END"
 
-	ssMarkerStart = "# K9-SafeSearch START"
-	ssMarkerEnd   = "# K9-SafeSearch END"
+	ssMarkerStart = "# K10-SafeSearch START"
+	ssMarkerEnd   = "# K10-SafeSearch END"
 )
 
 // SafeSearch enforcement IPs published by Google / Microsoft for parental controls.
@@ -102,7 +102,7 @@ func Install(domains []string) error {
 		return err
 	}
 
-	// Remove existing K9 block if present
+	// Remove existing K10 block if present
 	if strings.Contains(content, markerStart) {
 		start := strings.Index(content, markerStart)
 		end := strings.Index(content, markerEnd) + len(markerEnd)

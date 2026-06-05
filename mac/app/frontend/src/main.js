@@ -1,4 +1,5 @@
-// K9 Web Protection — Professional UI wired to Go backend
+// K10 Web Protection — Professional UI wired to Go backend
+import { EventsOn } from '../wailsjs/runtime/runtime.js'
 
 const go = () => window.go?.main?.App
 
@@ -35,6 +36,10 @@ function showTab(tabName) {
     showPage('categories')
     setSideActive('categories')
     loadCategories()
+  } else if (tabName === 'focusmode') {
+    sidebar.style.display = 'none'
+    showPage('focusmode')
+    loadFocusMode()
   } else if (tabName === 'help') {
     sidebar.style.display = 'none'
     showPage('help')
@@ -82,6 +87,7 @@ document.querySelectorAll('.sideLink').forEach(a => {
     if (page === 'advanced')   loadAdvanced()
     if (page === 'update')     loadUpdate()
     if (page === 'effects')    loadBlockingEffects()
+    if (page === 'time')       loadTimeRestrictions()
   })
 })
 
@@ -133,11 +139,13 @@ async function loadDashboard() {
     `${allowCount} <span style="font-size:9px;color:#888;font-weight:600">allow</span>&nbsp;&nbsp;` +
     `${blockCount} <span style="font-size:9px;color:#888;font-weight:600">block</span>`
 
-  const levelLabel = cs.blockAdultContent ? 'Default' : 'Minimal'
-  const levelSubEl = document.getElementById('stat-filter-sub')
+  const levelNames = { high: 'High', default: 'Default', moderate: 'Moderate', minimal: 'Minimal', monitor: 'Monitor', custom: 'Custom' }
+  const levelSubs  = { high: 'All categories blocked', default: '18 categories blocked', moderate: '10 categories blocked', minimal: 'Threats only', monitor: 'Logging only', custom: 'Custom rules' }
+  const fl = cs.filterLevel || 'default'
   const levelEl    = document.getElementById('stat-filter-level')
-  if (levelEl) levelEl.textContent = levelLabel
-  if (levelSubEl) levelSubEl.textContent = cs.blockAdultContent ? '18 categories blocked' : 'Threats only'
+  const levelSubEl = document.getElementById('stat-filter-sub')
+  if (levelEl)    levelEl.textContent    = levelNames[fl]  || fl
+  if (levelSubEl) levelSubEl.textContent = levelSubs[fl]   || ''
 
   // ── DB chips ──
   const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
@@ -165,6 +173,59 @@ async function loadDashboard() {
   renderRecentActivity(s.topBlocked)
 }
 
+const CAT_DISPLAY = {
+  'pornography':              'Pornography',
+  'adult-mature':             'Adult',
+  'nudity':                   'Nudity',
+  'alternative-sexuality':    'Alt. Sexuality',
+  'sex-education':            'Sex Education',
+  'social-networking':        'Social Media',
+  'chat-im':                  'Messaging',
+  'gambling':                 'Gambling',
+  'malware-spyware':          'Malware',
+  'phishing':                 'Phishing',
+  'hacking':                  'Hacking',
+  'violence-hate':            'Violence / Hate',
+  'extreme':                  'Extreme Content',
+  'illegal-drugs':            'Illegal Drugs',
+  'p2p':                      'P2P / Torrents',
+  'proxy-avoidance':          'Proxy Bypass',
+  'alcohol':                  'Alcohol',
+  'tobacco':                  'Tobacco',
+  'weapons':                  'Weapons',
+  'abortion':                 'Abortion',
+  'personals-dating':         'Dating',
+  'intimate-apparel':         'Intimate Apparel',
+  'newsgroups-forums':        'Forums',
+  'open-image-search':        'Image Search',
+  'personal-pages':           'Personal Pages',
+  'alternative-spirituality': 'Alt. Spirituality',
+  'lgbt':                     'LGBT',
+  'suspicious':               'Suspicious',
+  'unrated':                  'Unrated',
+}
+
+function domainToCategory(domain) {
+  const d = domain.toLowerCase()
+  if (/facebook|instagram|twitter|x\.com|tiktok|snapchat|reddit|pinterest|tumblr|linkedin|threads|bereal|vk\.com|weibo/.test(d)) return 'Social Media'
+  if (/whatsapp|telegram|discord|signal|messenger|viber|wechat|line\.me|skype|slack/.test(d)) return 'Messaging'
+  if (/youtube|twitch|netflix|hulu|disneyplus|tubi|dailymotion|vimeo|spotify|soundcloud/.test(d)) return 'Streaming'
+  if (/pornhub|xhamster|xnxx|xvideos|onlyfans|porn|xxx|adult|nudity|phncdn|brazzers|redtube|youporn|sex\.com/.test(d)) return 'Pornography'
+  if (/casino|poker|slots|betway|bet365|draftkings|fanduel|gambl|bwin|1xbet|betfair/.test(d)) return 'Gambling'
+  if (/malware|trojan|spyware|adware|ransomware|botnet|exploit|payload/.test(d)) return 'Malware'
+  if (/phish|scam|fraud|fake|spoof/.test(d)) return 'Phishing'
+  if (/hate|terror|jihadist|extremis|violen/.test(d)) return 'Violence / Hate'
+  if (/drug|weed|cannabis|cocaine|heroin|narco/.test(d)) return 'Illegal Drugs'
+  if (/proxy|vpn|tor\.|torproject|pirate|thepirate|1337x|rarbg|torrent|magnet/.test(d)) return 'Proxy / P2P'
+  if (/doubleclick|adnxs|googlesyndication|outbrain|taboola|ads\.|tracking\.|analytics\./.test(d)) return 'Ads / Tracking'
+  return 'Other'
+}
+
+function entryCategory(e) {
+  if (e.category && CAT_DISPLAY[e.category]) return CAT_DISPLAY[e.category]
+  return domainToCategory(e.domain)
+}
+
 function renderTopCategoriesChart(topBlocked) {
   const el = document.getElementById('top-categories-bars')
   if (!el) return
@@ -172,16 +233,21 @@ function renderTopCategoriesChart(topBlocked) {
     el.innerHTML = '<div class="dash-bar-row"><span class="dash-bar-label" style="width:auto;color:#aaa">No data yet</span></div>'
     return
   }
-  const top5 = topBlocked.slice(0, 5)
-  const max  = top5[0]?.count || 1
-  const colors = ['#991b1b','#92400e','#1e40af','#854d0e','#6b21a8']
-  el.innerHTML = top5.map((e, i) => {
-    const label = e.domain.length > 12 ? e.domain.slice(0, 11) + '…' : e.domain
-    const pct = Math.round(e.count / max * 100)
+  // Aggregate domain block counts into categories
+  const catCounts = {}
+  for (const e of topBlocked) {
+    const cat = entryCategory(e)
+    catCounts[cat] = (catCounts[cat] || 0) + e.count
+  }
+  const sorted = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const max = sorted[0]?.[1] || 1
+  const colors = ['#991b1b', '#1e40af', '#92400e', '#6b21a8', '#854d0e']
+  el.innerHTML = sorted.map(([cat, count], i) => {
+    const pct = Math.round(count / max * 100)
     return `<div class="dash-bar-row">
-      <span class="dash-bar-label">${esc(label)}</span>
+      <span class="dash-bar-label">${esc(cat)}</span>
       <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
-      <span class="dash-bar-val">${e.count}</span>
+      <span class="dash-bar-val">${count}</span>
     </div>`
   }).join('')
 }
@@ -200,30 +266,33 @@ function renderRecentActivity(topBlocked) {
     el.innerHTML = '<div class="dash-recent-row"><span class="dash-recent-url muted">No activity recorded yet.</span></div>'
     return
   }
-  const catClass = (domain) => {
-    if (/porn|xxx|adult|sex|hub|babes|eliteb/.test(domain)) return 'cat-porn'
-    if (/casino|gambl|poker|slot/.test(domain)) return 'cat-gamble'
-    if (/malware|trojan|virus|hack/.test(domain)) return 'cat-malware'
-    if (/phish|fake/.test(domain)) return 'cat-phish'
-    if (/hate|violen/.test(domain)) return 'cat-violence'
+  const catClass = (e) => {
+    const cat = entryCategory(e)
+    if (cat === 'Pornography' || cat === 'Adult' || cat === 'Nudity' || cat === 'Alt. Sexuality' || cat === 'Sex Education') return 'cat-porn'
+    if (cat === 'Gambling')        return 'cat-gamble'
+    if (cat === 'Malware' || cat === 'Suspicious' || cat === 'Hacking') return 'cat-malware'
+    if (cat === 'Phishing')        return 'cat-phish'
+    if (cat === 'Violence / Hate' || cat === 'Extreme Content') return 'cat-violence'
+    if (cat === 'Social Media')    return 'cat-social'
+    if (cat === 'Messaging')       return 'cat-social'
     return 'cat-other'
-  }
-  const catLabel = (domain) => {
-    if (/porn|xxx|adult|sex|hub|babes|eliteb/.test(domain)) return 'Pornography'
-    if (/casino|gambl|poker|slot/.test(domain)) return 'Gambling'
-    if (/malware|trojan|virus|hack/.test(domain)) return 'Malware'
-    if (/phish|fake/.test(domain)) return 'Phishing'
-    if (/hate|violen/.test(domain)) return 'Violence'
-    return 'Blocked'
   }
   el.innerHTML = topBlocked.slice(0, 8).map(e =>
     `<div class="dash-recent-row">
       <span class="dash-recent-time">${fmtTime(e.lastSeen)}</span>
       <span class="dash-recent-url">${esc(e.domain)}</span>
-      <span class="dash-recent-cat ${catClass(e.domain)}">${catLabel(e.domain)}</span>
+      <span class="dash-recent-cat ${catClass(e)}">${entryCategory(e)}</span>
     </div>`
   ).join('')
 }
+
+async function clearBlockedLog() {
+  try {
+    await go().ClearStats()
+    loadDashboard()
+  } catch (e) { notify(String(e), 'err') }
+}
+window.clearBlockedLog = clearBlockedLog
 
 function verifyProtection() {
   if (!window.go?.main?.App) return
@@ -284,7 +353,7 @@ async function loadActivity() {
 // ── Categories ────────────────────────────────────────────────────────────────
 async function loadCategories() {
   const s = await go().GetContentSettings()
-  const level = s.blockAdultContent ? 'default' : 'minimal'
+  let level = s.filterLevel || 'default'
 
   document.querySelectorAll('[id^="setting-"]').forEach(el => el.classList.remove('selected'))
   const row = document.getElementById('setting-' + level)
@@ -306,9 +375,11 @@ function updateCategoryUI() {
   const row = document.getElementById('setting-' + checked)
   if (row) row.classList.add('selected')
   const showHide = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? 'block' : 'none' }
-  showHide('cat-list-high',    checked === 'high')
-  showHide('cat-list-default', checked === 'default')
-  showHide('custom-cats',      checked === 'custom')
+  showHide('cat-list-high',     checked === 'high')
+  showHide('cat-list-default',  checked === 'default')
+  showHide('cat-list-moderate', checked === 'moderate')
+  showHide('cat-list-minimal',  checked === 'minimal')
+  showHide('custom-cats',       checked === 'custom')
 }
 
 document.querySelectorAll('.radioLink').forEach(a => {
@@ -322,19 +393,31 @@ document.querySelectorAll('.radioLink').forEach(a => {
 
 async function saveCategories() {
   const level = document.querySelector('input[name="level"]:checked')?.value || 'default'
-  let blockAdultContent = true, blockYouTube = false, safeSearch = true, blockImageSearch = false
-  if (level === 'high')     { blockAdultContent = true;  blockYouTube = true; }
-  if (level === 'moderate') { blockAdultContent = true;  blockYouTube = false; }
-  if (level === 'minimal')  { blockAdultContent = false; blockYouTube = false; }
-  if (level === 'monitor')  { blockAdultContent = false; blockYouTube = false; }
-  if (level === 'custom')   {
+
+  // Standard levels — no password needed
+  if (['high', 'default', 'moderate', 'minimal'].includes(level)) {
+    try {
+      await go().SetFilterLevel(level)
+      notify('Category settings saved.', 'ok')
+      loadDashboard()
+    } catch (e) { notify(String(e), 'err') }
+    return
+  }
+
+  // Monitor / Custom — password required
+  let blockAdultContent = false, blockYouTube = false, safeSearch = true, blockImageSearch = false
+  if (level === 'custom') {
     blockAdultContent = document.getElementById('cat-adult').checked
     blockYouTube      = document.getElementById('cat-youtube').checked
     safeSearch        = document.getElementById('cat-safesearch').checked
   }
+  const hasPw = await go().HasPassword()
+  const pw = hasPw ? await requirePassword('Save Category Settings') : ''
+  if (pw === null) return
   try {
-    await go().SaveContentSettings('', { blockAdultContent, blockYouTube, safeSearch, blockImageSearch })
+    await go().SaveContentSettings(pw, { filterLevel: level, blockAdultContent, blockYouTube, safeSearch, blockImageSearch })
     notify('Category settings saved.', 'ok')
+    loadDashboard()
   } catch (e) { notify(String(e), 'err') }
 }
 window.saveCategories = saveCategories
@@ -517,7 +600,148 @@ window.loadAdvanced = loadAdvanced
 window.saveAdvanced = saveAdvanced
 window.installCA = installCA
 
-// ── Time Restrictions (frontend-only until backend is built) ──────────────────
+// ── Focus Mode ────────────────────────────────────────────────────────────────
+
+let _focusEndTime = 0
+let _focusCountdown = null
+
+async function loadFocusMode() {
+  if (!window.go?.main?.App) return
+  const [fm, sites] = await Promise.all([go().GetFocusMode(), go().GetFocusSites()])
+  renderFocusModeStatus(fm)
+  renderFocusSitesList(sites)
+  if (fm.active) {
+    _focusEndTime = Date.now() + fm.remaining * 1000
+    clearInterval(_focusCountdown)
+    _focusCountdown = setInterval(_tickFocusCountdown, 1000)
+  } else {
+    clearInterval(_focusCountdown)
+  }
+}
+
+function _tickFocusCountdown() {
+  const rem = Math.max(0, Math.round((_focusEndTime - Date.now()) / 1000))
+  if (rem <= 0) {
+    clearInterval(_focusCountdown)
+    renderFocusModeStatus({ active: false, remaining: 0 })
+  } else {
+    _updateFocusStatusUI(true, rem)
+  }
+}
+
+function renderFocusModeStatus(fm) {
+  _updateFocusStatusUI(fm.active, fm.remaining)
+}
+
+function _updateFocusStatusUI(active, remaining) {
+  const dot   = document.getElementById('focus-status-dot')
+  const text  = document.getElementById('focus-status-text')
+  const stop  = document.getElementById('focus-stop-btn')
+  const start = document.getElementById('focus-start-section')
+  if (!dot) return
+
+  if (active) {
+    const m = Math.floor(remaining / 60), s = remaining % 60
+    const timeStr = m > 0 ? `${m}m ${s.toString().padStart(2,'0')}s` : `${s}s`
+    dot.style.background  = '#1a8a3a'
+    text.textContent      = `ACTIVE — ${timeStr} remaining`
+    text.style.color      = '#1a8a3a'
+    if (stop)  stop.style.display  = 'inline-flex'
+    if (start) start.style.opacity = '0.4'
+  } else {
+    dot.style.background  = '#aaa'
+    text.textContent      = 'Not active'
+    text.style.color      = '#555'
+    if (stop)  stop.style.display  = 'none'
+    if (start) start.style.opacity = '1'
+  }
+}
+
+function renderFocusSitesList(sites) {
+  const el = document.getElementById('focus-sites-list')
+  if (!el) return
+  if (!sites?.length) {
+    el.innerHTML = '<div style="padding:8px;color:#aaa;font-style:italic;font-size:11px">No sites configured.</div>'
+    return
+  }
+  el.innerHTML = sites.map(s => {
+    const checked = s.active ? 'checked' : ''
+    const del = !s.builtin
+      ? `<a href="#" style="color:#cc2222;font-size:14px;font-weight:bold;text-decoration:none;margin-left:auto;padding:0 8px;flex-shrink:0"
+           onclick="removeFocusSite('${esc(s.domain).replace(/'/g,"\\'")}'); return false;">&times;</a>`
+      : '<span style="width:28px;flex-shrink:0"></span>'
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid #e8ecf2">
+      <input type="checkbox" ${checked} style="flex-shrink:0;cursor:pointer"
+        onchange="toggleFocusSite('${esc(s.domain).replace(/'/g,"\\'")}', this.checked)">
+      <span style="font-size:11px;font-weight:600;color:${s.active ? 'var(--navy)' : '#999'};flex:1">${esc(s.domain)}</span>
+      <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:2px;background:${s.active ? '#e6f4eb' : '#f5f5f5'};color:${s.active ? '#1a8a3a' : '#aaa'};flex-shrink:0">${s.active ? 'BLOCK' : 'ALLOW'}</span>
+      ${del}
+    </div>`
+  }).join('')
+}
+
+async function startFocusMode() {
+  const minutes = parseInt(document.getElementById('focus-duration')?.value || '30')
+  try {
+    await go().StartFocusMode(minutes)
+    notify(`Focus mode started for ${minutes < 60 ? minutes + ' min' : (minutes/60) + ' hr'}.`, 'ok')
+    await loadFocusMode()
+  } catch (e) { notify(String(e), 'err') }
+}
+
+async function stopFocusMode() {
+  const hasPw = await go().HasPassword()
+  const pw = hasPw ? await requirePassword('Stop Focus Mode') : ''
+  if (pw === null) return
+  try {
+    await go().StopFocusMode(pw)
+    clearInterval(_focusCountdown)
+    notify('Focus mode stopped.', 'ok')
+    await loadFocusMode()
+  } catch (e) { notify(String(e), 'err') }
+}
+
+async function toggleFocusSite(domain, active) {
+  try {
+    await go().SetFocusSiteActive(domain, active)
+    const sites = await go().GetFocusSites()
+    renderFocusSitesList(sites)
+  } catch (e) { notify(String(e), 'err') }
+}
+
+async function addFocusSite() {
+  const input = document.getElementById('focus-add-input')
+  const val = input.value.trim()
+  if (!val) return
+  try {
+    await go().AddFocusSite(val)
+    input.value = ''
+    const sites = await go().GetFocusSites()
+    renderFocusSitesList(sites)
+    notify('Site added to Focus Mode.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
+}
+
+async function removeFocusSite(domain) {
+  try {
+    await go().RemoveFocusSite(domain)
+    const sites = await go().GetFocusSites()
+    renderFocusSitesList(sites)
+    notify('Site removed.', 'ok')
+  } catch (e) { notify(String(e), 'err') }
+}
+
+window.startFocusMode  = startFocusMode
+window.stopFocusMode   = stopFocusMode
+window.toggleFocusSite = toggleFocusSite
+window.addFocusSite    = addFocusSite
+window.removeFocusSite = removeFocusSite
+
+document.getElementById('focus-add-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addFocusSite()
+})
+
+// ── Time Restrictions ─────────────────────────────────────────────────────────
 function toggleTimeRestrictions() {
   const enabled = document.getElementById('cb-time-enabled')?.checked
   const showHide = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? 'block' : 'none' }
@@ -525,6 +749,47 @@ function toggleTimeRestrictions() {
   showHide('time-disabled-msg', !enabled)
 }
 window.toggleTimeRestrictions = toggleTimeRestrictions
+
+async function loadTimeRestrictions() {
+  if (!window.go?.main?.App) return
+  try {
+    const tr = await go().GetTimeRestrictions()
+    const cbEnabled = document.getElementById('cb-time-enabled')
+    if (cbEnabled) cbEnabled.checked = tr.enabled
+    toggleTimeRestrictions()
+    const days = tr.days || []
+    days.forEach(d => {
+      const row = document.querySelector(`.time-day-row[data-day="${d.day}"]`)
+      if (!row) return
+      const fromEl = row.querySelector('.tr-from')
+      const toEl   = row.querySelector('.tr-to')
+      const cbEl   = row.querySelector('.tr-enabled')
+      if (fromEl) fromEl.value = d.from || '08:00'
+      if (toEl)   toEl.value   = d.to   || '22:00'
+      if (cbEl)   cbEl.checked = !!d.enabled
+    })
+  } catch (e) { notify(String(e), 'err') }
+}
+window.loadTimeRestrictions = loadTimeRestrictions
+
+async function saveTimeRestrictions() {
+  if (!window.go?.main?.App) { notify('Not connected to backend.', 'err'); return }
+  try {
+    const enabled = !!document.getElementById('cb-time-enabled')?.checked
+    const days = []
+    document.querySelectorAll('.time-day-row[data-day]').forEach(row => {
+      const day    = row.dataset.day
+      const from   = row.querySelector('.tr-from')?.value  || '08:00'
+      const to     = row.querySelector('.tr-to')?.value    || '22:00'
+      const enCb   = row.querySelector('.tr-enabled')
+      const dayEnabled = enCb ? enCb.checked : false
+      days.push({ day, from, to, enabled: dayEnabled })
+    })
+    await go().SaveTimeRestrictions({ enabled, days })
+    notify('Time restrictions saved.')
+  } catch (e) { notify(String(e), 'err') }
+}
+window.saveTimeRestrictions = saveTimeRestrictions
 
 // ── Blocking Effects (frontend-only until backend is built) ───────────────────
 function loadBlockingEffects() {
@@ -559,9 +824,9 @@ window.checkForUpdate = checkForUpdate
 // ── Uninstall ─────────────────────────────────────────────────────────────────
 async function showUninstall() {
   const hasPw = await go().HasPassword()
-  const pw = hasPw ? prompt('Enter password to uninstall K9 Web Protection:') : ''
+  const pw = hasPw ? await requirePassword('Uninstall K10 Web Protection') : ''
   if (pw === null) return
-  try { await go().Uninstall(pw || ''); notify('K9 uninstalled. Please delete the app from /Applications.', 'ok') }
+  try { await go().Uninstall(pw || ''); notify('K10 uninstalled. Please delete the app from /Applications.', 'ok') }
   catch (e) { notify(String(e), 'err') }
 }
 window.showUninstall = showUninstall
@@ -571,11 +836,69 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
+// ── Generic password confirm modal ────────────────────────────────────────────
+let _pwConfirmCancel = null
+function requirePassword(title = 'Confirm') {
+  return new Promise(resolve => {
+    document.getElementById('pwConfirmTitle').textContent = title
+    document.getElementById('pwConfirmInput').value = ''
+    document.getElementById('pwConfirmErr').style.display = 'none'
+    document.getElementById('pwConfirmBg').classList.add('show')
+    setTimeout(() => document.getElementById('pwConfirmInput').focus(), 50)
+    _pwConfirmCancel = () => { document.getElementById('pwConfirmBg').classList.remove('show'); resolve(null) }
+    document.getElementById('pwConfirmOkBtn').onclick = () => {
+      const pw = document.getElementById('pwConfirmInput').value
+      document.getElementById('pwConfirmBg').classList.remove('show')
+      _pwConfirmCancel = null
+      resolve(pw)
+    }
+  })
+}
+function closePwConfirm() {
+  if (_pwConfirmCancel) { _pwConfirmCancel(); _pwConfirmCancel = null }
+}
+document.getElementById('pwConfirmInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('pwConfirmOkBtn').click()
+  if (e.key === 'Escape') closePwConfirm()
+})
+window.closePwConfirm = closePwConfirm
+
+// ── Quit modal ────────────────────────────────────────────────────────────────
+async function showQuitModal() {
+  const hasPw = await go().HasPassword()
+  document.getElementById('quit-pw-row').style.display = hasPw ? 'block' : 'none'
+  document.getElementById('quit-pw').value = ''
+  document.getElementById('quit-err').style.display = 'none'
+  document.getElementById('quitModalBg').classList.add('show')
+  if (hasPw) setTimeout(() => document.getElementById('quit-pw').focus(), 50)
+  if (!hasPw) setTimeout(confirmQuit, 0) // no password set → quit immediately
+}
+
+function closeQuitModal() { document.getElementById('quitModalBg').classList.remove('show') }
+
+async function confirmQuit() {
+  const pw = document.getElementById('quit-pw')?.value ?? ''
+  try {
+    await go().ConfirmQuit(pw)
+  } catch (e) {
+    const errEl = document.getElementById('quit-err')
+    errEl.textContent = String(e).replace(/^Error: /, '')
+    errEl.style.display = 'block'
+    document.getElementById('quit-pw').select()
+  }
+}
+
+document.getElementById('quit-pw')?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmQuit() })
+window.closeQuitModal = closeQuitModal
+window.confirmQuit = confirmQuit
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
   const init = () => {
-    if (window.go?.main?.App) { loadDashboard() }
-    else { setTimeout(init, 100) }
+    if (window.go?.main?.App) {
+      loadDashboard()
+      EventsOn('quit-requested', showQuitModal)
+    } else { setTimeout(init, 100) }
   }
   init()
 })

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>K9 Web Protection Administration</title>
+  <title>K10 Web Protection Administration</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/src/style.css" />
@@ -10,7 +10,7 @@
     #wailsDragBar {
       position: fixed; top: 0; left: 0; right: 0;
       height: var(--titlebar); z-index: 9999;
-      -webkit-app-region: drag;
+      --wails-draggable: drag;
       background: var(--navy-dark);
     }
   </style>
@@ -22,9 +22,9 @@
 <!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
 <header class="k9-header">
   <div class="k9-logo-area">
-    <img class="k9-logo" src="/logo.webp" alt="K9" />
+    <img class="k9-logo" src="/logo.webp" alt="K10" />
     <div class="k9-title-wrap">
-      <div class="k9-title">K9 Web Protection Administration</div>
+      <div class="k9-title">K10 Web Protection Administration</div>
     </div>
   </div>
   <div class="header-right">
@@ -57,6 +57,12 @@
       <a href="#" class="k9-tab navLink" data-tab="setup">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         SETUP
+      </a>
+    </li>
+    <li id="tab-focusmode">
+      <a href="#" class="k9-tab navLink" data-tab="focusmode">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        FOCUS MODE
       </a>
     </li>
     <li id="tab-help">
@@ -267,9 +273,9 @@
 
           <div class="dash-section-title" style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
             Recent Blocked Activity
-            <button onclick="loadDashboard()" title="Refresh" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:#144985;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              Refresh
+            <button onclick="clearBlockedLog()" title="Clear log" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:#144985;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              Clear
             </button>
           </div>
           <div id="recent-activity">
@@ -344,29 +350,49 @@
 
       <div class="level-group">
 
+        <!-- HIGH -->
         <div class="level-row" id="setting-high">
           <a href="#" class="level-row-inner radioLink settingLink" id="radio-high">
             <input type="radio" name="level" id="level-high" value="high" />
-            <div style="flex:1"><span class="level-name">High</span> <span class="level-desc">All default categories plus chat, newsgroups, unrated.</span></div>
+            <div style="flex:1"><span class="level-name">High</span> <span class="level-desc">All categories blocked — maximum protection.</span></div>
           </a>
           <div class="cat-box" id="cat-list-high" style="display:none">
             <strong>Currently blocked:</strong>
             <div class="cat-cols">
-              <span class="cat-item">Abortion</span><span class="cat-item">Adult / Mature Content</span><span class="cat-item">Alcohol</span>
-              <span class="cat-item">Alternative Sexuality</span><span class="cat-item">Alternative Spirituality</span><span class="cat-item">Chat / IM</span>
-              <span class="cat-item">Extreme</span><span class="cat-item">Gambling</span><span class="cat-item">Hacking</span>
-              <span class="cat-item">Illegal / Questionable</span><span class="cat-item">Illegal Drugs</span><span class="cat-item">Intimate Apparel</span>
-              <span class="cat-item">LGBT</span><span class="cat-item">Newsgroups / Forums</span><span class="cat-item">Nudity</span>
-              <span class="cat-item">Open Image Search</span><span class="cat-item">P2P</span><span class="cat-item">Personal Pages</span>
-              <span class="cat-item">Personals / Dating</span><span class="cat-item">Phishing</span><span class="cat-item">Pornography</span>
-              <span class="cat-item">Proxy Avoidance</span><span class="cat-item">Sex Education</span><span class="cat-item">Social Networking</span>
-              <span class="cat-item">Spyware / Malware</span><span class="cat-item">Spyware Effects</span><span class="cat-item">Suspicious</span>
-              <span class="cat-item">Tobacco</span><span class="cat-item">Unrated</span><span class="cat-item">Violence / Hate</span>
+              <span class="cat-item">Abortion</span>
+              <span class="cat-item">Adult / Mature Content</span>
+              <span class="cat-item">Alcohol</span>
+              <span class="cat-item">Alternative Sexuality</span>
+              <span class="cat-item">Alternative Spirituality</span>
+              <span class="cat-item">Chat / IM</span>
+              <span class="cat-item">Extreme Content</span>
+              <span class="cat-item">Gambling</span>
+              <span class="cat-item">Hacking / Warez</span>
+              <span class="cat-item">Illegal Drugs</span>
+              <span class="cat-item">Intimate Apparel</span>
+              <span class="cat-item">LGBT</span>
+              <span class="cat-item">Newsgroups / Forums</span>
+              <span class="cat-item">Nudity</span>
+              <span class="cat-item">Open Image Search</span>
+              <span class="cat-item">P2P / Torrents</span>
+              <span class="cat-item">Personal Pages</span>
+              <span class="cat-item">Personals / Dating</span>
+              <span class="cat-item">Phishing</span>
+              <span class="cat-item">Pornography</span>
+              <span class="cat-item">Proxy Avoidance</span>
+              <span class="cat-item">Sex Education</span>
+              <span class="cat-item">Social Networking</span>
+              <span class="cat-item">Spyware / Malware</span>
+              <span class="cat-item">Suspicious</span>
+              <span class="cat-item">Tobacco</span>
+              <span class="cat-item">Unrated</span>
+              <span class="cat-item">Violence / Hate</span>
               <span class="cat-item">Weapons</span>
             </div>
           </div>
         </div>
 
+        <!-- DEFAULT -->
         <div class="level-row selected" id="setting-default">
           <a href="#" class="level-row-inner radioLink settingLink" id="radio-default">
             <input type="radio" name="level" id="level-default" value="default" checked />
@@ -375,30 +401,67 @@
           <div class="cat-box" id="cat-list-default">
             <strong>Currently blocked:</strong>
             <div class="cat-cols">
-              <span class="cat-item">Abortion</span><span class="cat-item">Illegal / Questionable</span><span class="cat-item">Pornography</span>
-              <span class="cat-item">Adult / Mature Content</span><span class="cat-item">Illegal Drugs</span><span class="cat-item">Proxy Avoidance</span>
-              <span class="cat-item">Alternative Sexuality</span><span class="cat-item">Intimate Apparel / Swimsuit</span><span class="cat-item">Sex Education</span>
-              <span class="cat-item">Extreme</span><span class="cat-item">Nudity</span><span class="cat-item">Spyware / Malware Sources</span>
-              <span class="cat-item">Gambling</span><span class="cat-item">Personals / Dating</span><span class="cat-item">Suspicious</span>
-              <span class="cat-item">Hacking</span><span class="cat-item">Phishing</span><span class="cat-item">Violence / Hate / Racism</span>
+              <span class="cat-item">Abortion</span>
+              <span class="cat-item">Adult / Mature Content</span>
+              <span class="cat-item">Alternative Sexuality</span>
+              <span class="cat-item">Extreme Content</span>
+              <span class="cat-item">Gambling</span>
+              <span class="cat-item">Hacking / Warez</span>
+              <span class="cat-item">Illegal Drugs</span>
+              <span class="cat-item">Intimate Apparel</span>
+              <span class="cat-item">Nudity</span>
+              <span class="cat-item">Personals / Dating</span>
+              <span class="cat-item">Phishing</span>
+              <span class="cat-item">Pornography</span>
+              <span class="cat-item">Proxy Avoidance</span>
+              <span class="cat-item">Sex Education</span>
+              <span class="cat-item">Spyware / Malware</span>
+              <span class="cat-item">Suspicious</span>
+              <span class="cat-item">Violence / Hate</span>
             </div>
           </div>
         </div>
 
+        <!-- MODERATE -->
         <div class="level-row" id="setting-moderate">
           <a href="#" class="level-row-inner radioLink settingLink" id="radio-moderate">
             <input type="radio" name="level" id="level-moderate" value="moderate" />
             <div style="flex:1"><span class="level-name">Moderate</span> <span class="level-desc">Adult content, security threats, illegal activity.</span></div>
           </a>
+          <div class="cat-box" id="cat-list-moderate" style="display:none">
+            <strong>Currently blocked:</strong>
+            <div class="cat-cols">
+              <span class="cat-item">Adult / Mature Content</span>
+              <span class="cat-item">Extreme Content</span>
+              <span class="cat-item">Gambling</span>
+              <span class="cat-item">Hacking / Warez</span>
+              <span class="cat-item">Illegal Drugs</span>
+              <span class="cat-item">Phishing</span>
+              <span class="cat-item">Pornography</span>
+              <span class="cat-item">Spyware / Malware</span>
+              <span class="cat-item">Suspicious</span>
+              <span class="cat-item">Violence / Hate</span>
+            </div>
+          </div>
         </div>
 
+        <!-- MINIMAL -->
         <div class="level-row" id="setting-minimal">
           <a href="#" class="level-row-inner radioLink settingLink" id="radio-minimal">
             <input type="radio" name="level" id="level-minimal" value="minimal" />
             <div style="flex:1"><span class="level-name">Minimal</span> <span class="level-desc">Pornography and security threats only.</span></div>
           </a>
+          <div class="cat-box" id="cat-list-minimal" style="display:none">
+            <strong>Currently blocked:</strong>
+            <div class="cat-cols">
+              <span class="cat-item">Phishing</span>
+              <span class="cat-item">Pornography</span>
+              <span class="cat-item">Spyware / Malware</span>
+            </div>
+          </div>
         </div>
 
+        <!-- MONITOR -->
         <div class="level-row" id="setting-monitor">
           <a href="#" class="level-row-inner radioLink settingLink" id="radio-monitor">
             <input type="radio" name="level" id="level-monitor" value="monitor" />
@@ -406,6 +469,7 @@
           </a>
         </div>
 
+        <!-- CUSTOM -->
         <div class="level-row" id="setting-custom">
           <a href="#" class="level-row-inner radioLink settingLink" id="radio-custom">
             <input type="radio" name="level" id="level-custom" value="custom" />
@@ -544,6 +608,58 @@
 
     </div><!-- /page-safesearch -->
 
+    <!-- ── FOCUS MODE ────────────────────────────────────────────────────────── -->
+    <div id="page-focusmode" style="display:none">
+
+      <div class="content-title">
+        <span class="ct-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+        Focus Mode
+      </div>
+      <span class="view-help">Block social media to stay focused. More Help . . .</span>
+
+      <!-- Status -->
+      <div id="focus-status-bar" style="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px 12px;background:#f4f7fb;border:1px solid #b0bdd0;max-width:520px">
+        <span id="focus-status-dot" style="width:10px;height:10px;border-radius:50%;background:#aaa;flex-shrink:0"></span>
+        <span id="focus-status-text" style="font-size:11px;font-weight:700;color:#555;flex:1">Not active</span>
+        <button id="focus-stop-btn" class="k9-btn red" onclick="stopFocusMode()" style="display:none;font-size:10px;padding:3px 10px">Stop</button>
+      </div>
+
+      <!-- Start section -->
+      <div id="focus-start-section" style="max-width:520px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <label style="font-size:11px;font-weight:700;color:#333;white-space:nowrap">Duration:</label>
+          <select id="focus-duration" class="k9-select">
+            <option value="15">15 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="240">4 hours</option>
+            <option value="480">8 hours</option>
+          </select>
+          <button class="k9-btn green" onclick="startFocusMode()" style="white-space:nowrap">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start Focus Mode
+          </button>
+        </div>
+      </div>
+
+      <!-- Sites list -->
+      <div style="max-width:520px">
+        <div class="dash-section-title" style="margin-bottom:6px">Social Media Sites</div>
+        <div style="font-size:10px;color:#888;margin-bottom:6px">Check a site to block it during Focus Mode. Built-in sites cannot be removed.</div>
+        <div id="focus-sites-list" style="border:1px solid #c0c8d8;background:#fafbfd;max-height:280px;overflow-y:auto">
+          <div style="padding:8px;color:#aaa;font-style:italic;font-size:11px">Loading&hellip;</div>
+        </div>
+
+        <!-- Add custom site -->
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <input type="text" id="focus-add-input" class="k9-input" placeholder="e.g. myspace.com" style="flex:1" />
+          <button class="k9-btn add-btn" onclick="addFocusSite()">Add</button>
+        </div>
+      </div>
+
+    </div><!-- /page-focusmode -->
+
     <!-- ── TIME RESTRICTIONS ──────────────────────────────────────────────────── -->
     <div id="page-time" style="display:none">
 
@@ -560,29 +676,32 @@
         </label>
       </div>
 
-      <div id="time-schedule" style="display:none;border:1px solid #a0a0a0;padding:8px;background:#fafafa;max-width:420px">
-        <div class="adv-row" style="border-bottom:1px solid #eee;padding:4px 0;font-size:10px;font-weight:700;color:#777">
-          <label style="width:90px">Day</label>
-          <span style="flex:1;text-align:center">From</span>
-          <span style="margin:0 6px;color:#aaa">to</span>
-          <span style="flex:1;text-align:center">Until</span>
-          <span style="width:50px;text-align:center">Enabled</span>
+      <div style="font-size:10px;color:#888;margin-bottom:6px">During restricted hours, social media sites are blocked automatically (Focus Mode activates).</div>
+
+      <div id="time-schedule" style="display:none;border:1px solid #a0a0a0;background:#fafafa;max-width:460px">
+        <div style="display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #ddd;font-size:10px;font-weight:700;color:#777;gap:0">
+          <span style="width:96px">Day</span>
+          <span style="flex:1;text-align:center">Block from</span>
+          <span style="width:18px;text-align:center;color:#bbb">—</span>
+          <span style="flex:1;text-align:center">until</span>
+          <span style="width:54px;text-align:center">Active</span>
         </div>
-        <div class="time-day-row"><label>Monday</label><input type="time" class="k9-select" value="08:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox" checked></div>
-        <div class="time-day-row"><label>Tuesday</label><input type="time" class="k9-select" value="08:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox" checked></div>
-        <div class="time-day-row"><label>Wednesday</label><input type="time" class="k9-select" value="08:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox" checked></div>
-        <div class="time-day-row"><label>Thursday</label><input type="time" class="k9-select" value="08:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox" checked></div>
-        <div class="time-day-row"><label>Friday</label><input type="time" class="k9-select" value="08:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox" checked></div>
-        <div class="time-day-row"><label>Saturday</label><input type="time" class="k9-select" value="10:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox"></div>
-        <div class="time-day-row"><label>Sunday</label><input type="time" class="k9-select" value="10:00"><span class="time-sep">to</span><input type="time" class="k9-select" value="22:00"><input type="checkbox"></div>
+        <div class="time-day-row" data-day="monday">   <label>Monday</label>   <input type="time" class="k9-select tr-from" value="08:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled" checked></div>
+        <div class="time-day-row" data-day="tuesday">  <label>Tuesday</label>  <input type="time" class="k9-select tr-from" value="08:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled" checked></div>
+        <div class="time-day-row" data-day="wednesday"><label>Wednesday</label><input type="time" class="k9-select tr-from" value="08:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled" checked></div>
+        <div class="time-day-row" data-day="thursday"> <label>Thursday</label> <input type="time" class="k9-select tr-from" value="08:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled" checked></div>
+        <div class="time-day-row" data-day="friday">   <label>Friday</label>   <input type="time" class="k9-select tr-from" value="08:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled" checked></div>
+        <div class="time-day-row" data-day="saturday"> <label>Saturday</label> <input type="time" class="k9-select tr-from" value="10:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled"></div>
+        <div class="time-day-row" data-day="sunday">   <label>Sunday</label>   <input type="time" class="k9-select tr-from" value="10:00"><span class="time-sep">—</span><input type="time" class="k9-select tr-to" value="22:00"><input type="checkbox" class="tr-enabled"></div>
       </div>
       <div id="time-disabled-msg" style="font-size:11px;color:#888;padding:4px 0">Disabled. Enable above to configure.</div>
 
-      <div class="info-box" style="max-width:420px;margin-top:10px">
-        Time Restrictions require backend support — see <strong>plan.md item 6</strong>.
-      </div>
       <div class="btn-row">
-        <button class="k9-btn green" onclick="notify('Time Restrictions saved (backend not yet implemented).','ok')">
+        <button class="k9-btn" onclick="loadTimeRestrictions()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Cancel
+        </button>
+        <button class="k9-btn green" onclick="saveTimeRestrictions()">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           Save
         </button>
@@ -812,7 +931,7 @@
         <div style="font-size:11px; color:#666; margin-bottom:6px">
           Permanently removes all protection and settings from this Mac.
         </div>
-        <button class="k9-btn red" onclick="showUninstall()">Uninstall K9 Web Protection&hellip;</button>
+        <button class="k9-btn red" onclick="showUninstall()">Uninstall K10 Web Protection&hellip;</button>
       </div>
 
     </div><!-- /page-password -->
@@ -826,13 +945,13 @@
       </div>
 
       <div style="font-size:11px; line-height:1.6; color:#333; max-width:460px">
-        <p style="margin-bottom:8px">For assistance with K9 Web Protection, visit the support resources below.</p>
+        <p style="margin-bottom:8px">For assistance with K10 Web Protection, visit the support resources below.</p>
         <table class="k9-tbl">
           <tbody>
             <tr><td class="lbl">User Guide</td><td><a href="#" style="color:var(--navy-mid)">Download PDF</a></td></tr>
             <tr><td class="lbl">Knowledge Base</td><td><a href="#" style="color:var(--navy-mid)">Browse</a></td></tr>
-            <tr><td class="lbl">Email</td><td>support@k9webprotection.com</td></tr>
-            <tr><td class="lbl">Version</td><td>K9 Web Protection v4.1.0</td></tr>
+            <tr><td class="lbl">Email</td><td>support@k10webprotection.com</td></tr>
+            <tr><td class="lbl">Version</td><td>K10 Web Protection v4.1.0</td></tr>
           </tbody>
         </table>
       </div>
@@ -846,15 +965,50 @@
 <!-- ── FOOTER ──────────────────────────────────────────────────────────────── -->
 <div class="k9-footer-bar">
   <div class="brand-logo">
-    <span class="brand-k">K9</span>
+    <span class="brand-k"> K10</span>
     <span class="brand-star">★</span>
     <span class="brand-sub">WebProtection</span>
   </div>
 </div>
-<div class="k9-footer-copy">Copyright &copy; 2024&ndash;2026 K9WebProtection &mdash; All Rights Reserved.</div>
+<div class="k9-footer-copy">Copyright &copy; 2024&ndash;2026 K10WebProtection &mdash; All Rights Reserved.</div>
 
 <!-- Notification bar -->
 <div class="notifyBar" id="notifyBar"></div>
+
+<!-- Generic password confirmation modal -->
+<div id="pwConfirmBg" class="modal-bg">
+  <div class="modal-box">
+    <div class="modal-title" id="pwConfirmTitle">Confirm</div>
+    <div class="modal-body">
+      <div style="margin-bottom:4px;font-weight:600">Password required:</div>
+      <input type="password" id="pwConfirmInput" class="k9-input" style="width:220px" placeholder="Enter password" />
+      <div id="pwConfirmErr" style="color:#cc2222;font-size:12px;margin-top:6px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="k9-btn" onclick="closePwConfirm()">Cancel</button>
+      <button class="k9-btn green" id="pwConfirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quit modal -->
+<div id="quitModalBg" class="modal-bg">
+  <div class="modal-box">
+    <div class="modal-title">Quit K10 Web Protection?</div>
+    <div class="modal-body">
+      <p>Protection will be disabled when the app closes.</p>
+      <div id="quit-pw-row" style="display:none; margin-top:10px">
+        <div style="margin-bottom:4px; font-weight:600">Password required:</div>
+        <input type="password" id="quit-pw" class="k9-input" style="width:220px" placeholder="Enter password" />
+      </div>
+      <div id="quit-err" style="color:#cc2222; font-size:12px; margin-top:6px; display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="k9-btn" onclick="closeQuitModal()">Cancel</button>
+      <button class="k9-btn red" onclick="confirmQuit()">Quit</button>
+    </div>
+  </div>
+</div>
 
 <!-- Disable protection modal -->
 <div id="modalBg" class="modal-bg">

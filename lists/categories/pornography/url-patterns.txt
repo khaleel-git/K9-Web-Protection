@@ -1,0 +1,72 @@
+# K9 URL Keyword Patterns — Pornography
+# Checked against URL path + query string (NOT the hostname).
+# Blocked if the lowercased path/query contains this keyword as a substring.
+# Keep patterns specific enough to avoid false positives in legitimate URLs.
+
+# ── Extremely high confidence (virtually no false positives in URL paths) ──────
+porn
+xxx
+hentai
+nsfw
+milf
+blowjob
+creampie
+cumshot
+handjob
+gangbang
+pornstar
+sextape
+sexvideo
+sexcam
+livesex
+teenporn
+freeporn
+slutty
+faphouse
+brazzers
+bangbros
+mofos
+naughtyamerica
+realitykings
+twistys
+cornnhub
+redtube
+youporn
+spankbang
+xhamster
+xvideos
+xnxx
+onlyfans
+fansly
+manyvids
+stripchat
+camsoda
+chaturbate
+bongacams
+cam4
+livejasmin
+adulttime
+adultempire
+adultfriendfinder
+
+# ── High confidence (rare in legitimate URL paths) ────────────────────────────
+nude
+naked
+erotic
+erotica
+stripper
+striptease
+lapdance
+nudist
+nudism
+fetish
+bdsm
+bondage
+domination
+submissive
+kink
+cuckold
+voyeur
+upskirt
+pantie
+lingerie-model

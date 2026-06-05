@@ -16,26 +16,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"k9webprotection/internal/config"
-	"k9webprotection/internal/database"
-	"k9webprotection/internal/hosts"
-	"k9webprotection/internal/proxy"
+	"k10webprotection/internal/config"
+	"k10webprotection/internal/database"
+	"k10webprotection/internal/hosts"
+	"k10webprotection/internal/proxy"
 )
 
 // ── Types exposed to frontend ─────────────────────────────────────────────────
 
 type Status struct {
-	ProxyRunning   bool                  `json:"proxyRunning"`
-	Layer1Active   bool                  `json:"layer1Active"`
-	BlockedToday   int                   `json:"blockedToday"`
-	TotalBlocked   int                   `json:"totalBlocked"`
-	ProxyPort      int                   `json:"proxyPort"`
-	TopBlocked     []config.BlockedEntry `json:"topBlocked"`
-	DBDomains      int                   `json:"dbDomains"`
-	DBURLs         int                   `json:"dbUrls"`
-	DBKeywords     int                   `json:"dbKeywords"`
-	InFocusMode    bool                  `json:"inFocusMode"`
-	FocusRemaining int                   `json:"focusRemaining"` // seconds
+	ProxyRunning      bool                  `json:"proxyRunning"`
+	Layer1Active      bool                  `json:"layer1Active"`
+	BlockedToday      int                   `json:"blockedToday"`
+	TotalBlocked      int                   `json:"totalBlocked"`
+	ProxyPort         int                   `json:"proxyPort"`
+	TopBlocked        []config.BlockedEntry `json:"topBlocked"`
+	DBDomains         int                   `json:"dbDomains"`
+	DBURLs            int                   `json:"dbUrls"`
+	DBKeywords        int                   `json:"dbKeywords"`
+	InFocusMode       bool                  `json:"inFocusMode"`
+	FocusRemaining    int                   `json:"focusRemaining"` // seconds
+	InTimeRestriction bool                  `json:"inTimeRestriction"`
 }
 
 type BlocklistData struct {
@@ -50,10 +51,11 @@ type KeywordsData struct {
 }
 
 type ContentSettings struct {
-	BlockAdultContent bool `json:"blockAdultContent"`
-	BlockImageSearch  bool `json:"blockImageSearch"`
-	BlockYouTube      bool `json:"blockYouTube"`
-	SafeSearch        bool `json:"safeSearch"`
+	FilterLevel       string `json:"filterLevel"`
+	BlockAdultContent bool   `json:"blockAdultContent"`
+	BlockImageSearch  bool   `json:"blockImageSearch"`
+	BlockYouTube      bool   `json:"blockYouTube"`
+	SafeSearch        bool   `json:"safeSearch"`
 }
 
 type AdvancedSettings struct {
@@ -85,6 +87,7 @@ type App struct {
 	cfg          *config.Config
 	proxy        *proxy.Proxy
 	proxyRunning int32 // accessed via sync/atomic; 0=stopped 1=running
+	quitAuth     int32 // 1 = quit authorised; lets OnBeforeClose pass through
 }
 
 func NewApp() *App { return &App{} }
@@ -93,21 +96,23 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.cfg = config.Load()
 	a.proxy = proxy.New(a.cfg, func(domain string) {
-		a.cfg.IncrementBlocked(domain)
+		cat := database.DB.CategoryFor(domain)
+		a.cfg.IncrementBlocked(domain, cat)
 		a.cfg.Save()
 	})
 	// Enforce SafeSearch via /etc/hosts on startup
 	if a.cfg.SafeSearch {
 		go hosts.SetSafeSearch(true)
 	}
+	// Always clear system proxy first — recovers from a previous force-kill
+	// that left the proxy enabled with nothing listening on the port.
+	a.setSystemProxy(false)
 	if a.cfg.AutoStart {
 		go func() {
 			if err := a.startProxyAndWait(); err == nil {
 				a.setSystemProxy(true)
 			}
 		}()
-	} else {
-		a.setSystemProxy(false)
 	}
 	go func() {
 		sigs := make(chan os.Signal, 1)
@@ -132,6 +137,13 @@ func (a *App) shutdown(_ context.Context) {
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
+func (a *App) ClearStats() error {
+	a.cfg.Stats.TopBlocked = nil
+	a.cfg.Stats.BlockedToday = 0
+	a.cfg.Stats.TotalBlocked = 0
+	return a.cfg.Save()
+}
+
 func (a *App) GetStatus() Status {
 	db := database.DB
 	rem := int(a.cfg.FocusModeRemaining().Seconds())
@@ -145,8 +157,9 @@ func (a *App) GetStatus() Status {
 		DBDomains:      db.DomainCount(),
 		DBURLs:         db.URLCount(),
 		DBKeywords:     db.KeywordCount(),
-		InFocusMode:    a.cfg.InFocusMode(),
-		FocusRemaining: rem,
+		InFocusMode:       a.cfg.InFocusMode(),
+		FocusRemaining:    rem,
+		InTimeRestriction: a.cfg.InTimeRestriction(),
 	}
 }
 
@@ -272,6 +285,7 @@ func (a *App) RemoveKeyword(keyword string) error {
 
 func (a *App) GetContentSettings() ContentSettings {
 	return ContentSettings{
+		FilterLevel:       a.cfg.FilterLevel,
 		BlockAdultContent: a.cfg.BlockAdultContent,
 		BlockImageSearch:  a.cfg.BlockImageSearch,
 		BlockYouTube:      a.cfg.BlockYouTube,
@@ -300,10 +314,24 @@ func (a *App) SaveAdvancedSettings(password string, s AdvancedSettings) error {
 	return a.cfg.Save()
 }
 
+// SetFilterLevel saves a standard filter level (high/default/moderate/minimal)
+// without requiring a password. Monitor and Custom require password via SaveContentSettings.
+func (a *App) SetFilterLevel(level string) error {
+	switch level {
+	case "high", "default", "moderate", "minimal":
+		// allowed without password
+	default:
+		return errors.New("use SaveContentSettings for monitor/custom levels")
+	}
+	a.cfg.FilterLevel = level
+	return a.cfg.Save()
+}
+
 func (a *App) SaveContentSettings(password string, s ContentSettings) error {
 	if a.cfg.PasswordHash != "" && !a.verifyPassword(password) {
 		return errors.New("incorrect password")
 	}
+	a.cfg.FilterLevel = s.FilterLevel
 	a.cfg.BlockAdultContent = s.BlockAdultContent
 	a.cfg.BlockImageSearch = s.BlockImageSearch
 	a.cfg.BlockYouTube = s.BlockYouTube
@@ -341,11 +369,55 @@ func (a *App) StartFocusMode(minutes int) error {
 	return a.cfg.Save()
 }
 
+func (a *App) StopFocusMode(password string) error {
+	if a.cfg.PasswordHash != "" && !a.verifyPassword(password) {
+		return errors.New("incorrect password")
+	}
+	a.cfg.StopFocusMode()
+	return a.cfg.Save()
+}
+
 func (a *App) GetFocusMode() FocusModeStatus {
 	return FocusModeStatus{
 		Active:    a.cfg.InFocusMode(),
 		Remaining: int(a.cfg.FocusModeRemaining().Seconds()),
 	}
+}
+
+// ── Focus Sites ───────────────────────────────────────────────────────────────
+
+func (a *App) GetFocusSites() []config.FocusSite {
+	return a.cfg.GetFocusSites()
+}
+
+func (a *App) SetFocusSiteActive(domain string, active bool) error {
+	a.cfg.SetFocusSiteActive(domain, active)
+	return a.cfg.Save()
+}
+
+func (a *App) AddFocusSite(domain string) error {
+	domain = cleanDomain(domain)
+	if domain == "" {
+		return errors.New("invalid domain")
+	}
+	a.cfg.AddFocusSite(domain)
+	return a.cfg.Save()
+}
+
+func (a *App) RemoveFocusSite(domain string) error {
+	a.cfg.RemoveFocusSite(domain)
+	return a.cfg.Save()
+}
+
+// ── Time Restrictions ─────────────────────────────────────────────────────────
+
+func (a *App) GetTimeRestrictions() config.TimeRestrictions {
+	return a.cfg.GetTimeRestrictions()
+}
+
+func (a *App) SaveTimeRestrictions(tr config.TimeRestrictions) error {
+	a.cfg.SaveTimeRestrictions(tr)
+	return a.cfg.Save()
 }
 
 // ── Password ──────────────────────────────────────────────────────────────────
@@ -374,6 +446,7 @@ func (a *App) ConfirmQuit(password string) error {
 	if !a.verifyPassword(password) {
 		return errors.New("incorrect password")
 	}
+	atomic.StoreInt32(&a.quitAuth, 1)
 	wailsruntime.Quit(a.ctx)
 	return nil
 }
@@ -396,10 +469,10 @@ func (a *App) Uninstall(password string) error {
 	hosts.Remove()
 	hosts.SetSafeSearch(false)
 	exec.Command("launchctl", "bootout", "system",
-		"/Library/LaunchAgents/com.k9webprotection.plist").Run()
-	os.Remove("/Library/LaunchAgents/com.k9webprotection.plist")
+		"/Library/LaunchAgents/com.k10webprotection.plist").Run()
+	os.Remove("/Library/LaunchAgents/com.k10webprotection.plist")
 	home, _ := os.UserHomeDir()
-	os.RemoveAll(home + "/.k9webprotection")
+	os.RemoveAll(home + "/.k10webprotection")
 	return nil
 }
 
@@ -467,6 +540,24 @@ func (a *App) setSystemProxy(on bool) {
 			exec.Command("networksetup", "-setsecurewebproxystate", svc, "off").Run()
 		}
 	}
+	if on {
+		spawnProxyWatchdog()
+	}
+}
+
+// spawnProxyWatchdog starts a detached bash process that clears the system proxy
+// the moment this process dies — handles SIGKILL and wails dev force-kills.
+func spawnProxyWatchdog() {
+	pid := os.Getpid()
+	script := fmt.Sprintf(`pid=%d
+while kill -0 "$pid" 2>/dev/null; do sleep 1; done
+networksetup -listallnetworkservices 2>/dev/null | grep -v '[Aa]sterisk\|^$' | while IFS= read -r svc; do
+  networksetup -setwebproxystate "$svc" off 2>/dev/null
+  networksetup -setsecurewebproxystate "$svc" off 2>/dev/null
+done`, pid)
+	cmd := exec.Command("bash", "-c", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // own process group → survives parent kill
+	cmd.Start()                                            //nolint — intentionally fire-and-forget
 }
 
 func getNetworkServices() []string {

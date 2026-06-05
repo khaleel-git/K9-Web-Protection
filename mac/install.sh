@@ -1,22 +1,22 @@
 #!/bin/bash
-# K9 Web Protection — Installer
+# K10 Web Protection — Installer
 # Run once after building: bash install.sh
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_SRC="$SCRIPT_DIR/app/build/bin/K9 Web Protection.app"
-APP_DST="/Applications/K9 Web Protection.app"
-BINARY="$APP_DST/Contents/MacOS/K9WebProtection"
-AGENT_SRC="$SCRIPT_DIR/com.k9webprotection.plist"
-AGENT_DST="/Library/LaunchAgents/com.k9webprotection.plist"
-WATCHDOG_SRC="$SCRIPT_DIR/k9_watchdog.sh"
-WATCHDOG_DST="/usr/local/bin/k9_watchdog.sh"
+APP_SRC="$SCRIPT_DIR/app/build/bin/K10 Web Protection.app"
+APP_DST="/Applications/K10 Web Protection.app"
+BINARY="$APP_DST/Contents/MacOS/K10WebProtection"
+AGENT_SRC="$SCRIPT_DIR/com.k10webprotection.plist"
+AGENT_DST="/Library/LaunchAgents/com.k10webprotection.plist"
+WATCHDOG_SRC="$SCRIPT_DIR/k10_watchdog.sh"
+WATCHDOG_DST="/usr/local/bin/k10_watchdog.sh"
 
 RED='\033[0;31m'; GRN='\033[0;32m'; NC='\033[0m'
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  K9 Web Protection — Installer"
+echo "  K10 Web Protection — Installer"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -58,8 +58,8 @@ cp "$AGENT_SRC" "$AGENT_DST"
 launchctl bootout gui/"$REAL_UID" "$AGENT_DST" 2>/dev/null || true
 launchctl bootstrap gui/"$REAL_UID" "$AGENT_DST"
 
-WATCHDOG_PLIST="$SCRIPT_DIR/com.k9webprotection.watchdog.plist"
-WATCHDOG_AGENT_DST="/Library/LaunchAgents/com.k9webprotection.watchdog.plist"
+WATCHDOG_PLIST="$SCRIPT_DIR/com.k10webprotection.watchdog.plist"
+WATCHDOG_AGENT_DST="/Library/LaunchAgents/com.k10webprotection.watchdog.plist"
 cp "$WATCHDOG_PLIST" "$WATCHDOG_AGENT_DST"
 launchctl bootout gui/"$REAL_UID" "$WATCHDOG_AGENT_DST" 2>/dev/null || true
 launchctl bootstrap gui/"$REAL_UID" "$WATCHDOG_AGENT_DST"
@@ -74,7 +74,7 @@ echo -e "  ${GRN}Done.${NC}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "  ${GRN}K9 Web Protection installed successfully!${NC}"
+echo -e "  ${GRN}K10 Web Protection installed successfully!${NC}"
 echo "  Open the app and click Enable Protection."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

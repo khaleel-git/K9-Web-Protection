@@ -1,0 +1,24 @@
+# K9 URL Keyword Patterns — Phishing
+# Checked against URL path + query string.
+# These compound patterns are specific enough to avoid false positives
+# on legitimate password-reset and login flows at known-good domains.
+
+verify-account
+confirm-account
+login-verify
+account-verify
+verify-identity
+secure-login
+login-secure
+update-billing
+account-suspended
+account-suspend
+suspended-account
+unlock-account
+unusual-activity
+security-alert
+validate-payment
+payment-verify
+billing-update
+reactivate-account
+account-reactivate

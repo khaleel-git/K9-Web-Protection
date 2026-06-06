@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>K10 Web Protection</title>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
+    <allowed-os-versions>
+        <os-version min="12.0"/>
+    </allowed-os-versions>
+    <pkg-ref id="com.k10webprotection"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.k10webprotection"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.k10webprotection" visible="false">
+        <pkg-ref id="com.k10webprotection"/>
+    </choice>
+    <pkg-ref id="com.k10webprotection"
+             version="1.0.0"
+             onConclusion="none">.K10WebProtection-component.pkg</pkg-ref>
+</installer-gui-script>

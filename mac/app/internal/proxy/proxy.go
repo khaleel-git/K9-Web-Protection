@@ -205,7 +205,9 @@ func (p *Proxy) handle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Database domain lookup (category-aware for named levels, all-category for custom)
-		if len(cats) > 0 || level == LevelCustom || level == "" {
+		// Communication apps (WhatsApp, Messenger, Instagram) bypass this block;
+		// user's custom block list and Focus Mode (checked above) still apply.
+		if !IsCommunicationAllowed(host) && (len(cats) > 0 || level == LevelCustom || level == "") {
 			dbCats := cats
 			if (level == LevelCustom || level == "") && p.cfg.BlockAdultContent {
 				dbCats = nil // nil = all categories
@@ -279,6 +281,7 @@ func (p *Proxy) block(w http.ResponseWriter, r *http.Request, domain string) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Alt-Svc", "clear") // prevent QUIC/HTTP3 upgrade for this domain
 	w.WriteHeader(http.StatusForbidden)
 	w.Write([]byte(blockPageHTML(domain)))
 }

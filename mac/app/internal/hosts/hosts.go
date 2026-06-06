@@ -41,8 +41,19 @@ func SetSafeSearch(enabled bool) error {
 		return err
 	}
 
-	// Always strip existing SafeSearch section first
-	if strings.Contains(content, ssMarkerStart) {
+	alreadyPresent := strings.Contains(content, ssMarkerStart)
+
+	// Skip the privileged osascript write if already in the desired state.
+	// This prevents the admin password dialog from appearing on every restart.
+	if enabled && alreadyPresent {
+		return nil
+	}
+	if !enabled && !alreadyPresent {
+		return nil
+	}
+
+	// Strip existing SafeSearch section before rewriting
+	if alreadyPresent {
 		start := strings.Index(content, ssMarkerStart)
 		end := strings.Index(content, ssMarkerEnd) + len(ssMarkerEnd)
 		content = strings.TrimRight(content[:start], "\n") + "\n" +

@@ -49,12 +49,12 @@ def _parse_adblock(text: str) -> list[str]:
     """Parse AdBlock/AdGuard format: '||domain.com^'."""
     domains: list[str] = []
     for line in text.splitlines():
-        line = line.strip()
+        line = line.strip().lower()  # lowercase before regex so uppercase domains aren't silently dropped
         if not line or line.startswith("!") or line.startswith("#"):
             continue
-        m = re.match(r'^\|\|([a-z0-9\.\-]+)\^', line)
+        m = re.match(r'^\|\|([a-z0-9.-]+)\^', line)
         if m:
-            domains.append(m.group(1).lower())
+            domains.append(m.group(1))
     return domains
 
 
@@ -143,13 +143,14 @@ HGZ  = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains"
 UT1  = "https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists"
 URLH = "https://urlhaus.abuse.ch/downloads/hostfile"
 
-SOURCES: dict[str, dict] = {
+SOURCES: dict[str, list[dict]] = {
 
     # ── Pornography ────────────────────────────────────────────────────────────
     "pornography": [
         {"type": "domains", "label": "Block List Project — porn",    "url": f"{BLP}/porn.txt",                     "parser": _parse_hosts,        "cap": 0},
         {"type": "domains", "label": "StevenBlack — porn-only",      "url": f"{SB}/alternates/porn-only/hosts",    "parser": _parse_hosts,        "cap": 0},
         {"type": "domains", "label": "OISD NSFW",                    "url": OISD,                                  "parser": _parse_adblock,      "cap": 0},
+        {"type": "domains", "label": "HaGeZi — NSFW",               "url": f"{HGZ}/nsfw.txt",                     "parser": _parse_plain,        "cap": 0},
         {"type": "urls",    "label": "UT1 — adult (urls)",           "url": f"{UT1}/adult/urls",                   "parser": _parse_url_patterns, "cap": 0},
         {"type": "keywords","label": "UT1 — adult (keywords)",       "url": f"{UT1}/adult/keywords",               "parser": _parse_url_patterns, "cap": 0},
     ],
@@ -198,6 +199,7 @@ SOURCES: dict[str, dict] = {
 
     # ── Illegal Drugs ─────────────────────────────────────────────────────────
     "illegal-drugs": [
+        {"type": "domains", "label": "Block List Project — drugs",   "url": f"{BLP}/drugs.txt",                   "parser": _parse_hosts,        "cap": 0},
         {"type": "domains", "label": "UT1 — drogue",                 "url": f"{UT1}/drogue/domains",              "parser": _parse_plain,        "cap": 0},
     ],
 
@@ -230,6 +232,38 @@ SOURCES: dict[str, dict] = {
     "newsgroups-forums": [
         {"type": "domains", "label": "UT1 — forums",                 "url": f"{UT1}/forums/domains",              "parser": _parse_plain,        "cap": 0},
     ],
+
+    # ── Adult / Mature (non-explicit) ─────────────────────────────────────────
+    "adult-mature": [
+        {"type": "domains", "label": "UT1 — mixed_adult",            "url": f"{UT1}/mixed_adult/domains",         "parser": _parse_plain,        "cap": 0},
+    ],
+
+    # ── Extreme Content ───────────────────────────────────────────────────────
+    "extreme": [
+        {"type": "domains", "label": "UT1 — agressif",               "url": f"{UT1}/agressif/domains",            "parser": _parse_plain,        "cap": 0},
+    ],
+
+    # ── Violence / Hate ───────────────────────────────────────────────────────
+    "violence-hate": [
+        {"type": "domains", "label": "UT1 — agressif",               "url": f"{UT1}/agressif/domains",            "parser": _parse_plain,        "cap": 0},
+        {"type": "domains", "label": "UT1 — hate_speech",            "url": f"{UT1}/hate_speech/domains",         "parser": _parse_plain,        "cap": 0},
+    ],
+
+    # ── Alcohol ───────────────────────────────────────────────────────────────
+    "alcohol": [
+        {"type": "domains", "label": "UT1 — alcohol",                "url": f"{UT1}/alcohol/domains",             "parser": _parse_plain,        "cap": 0},
+    ],
+
+    # ── Weapons ───────────────────────────────────────────────────────────────
+    "weapons": [
+        {"type": "domains", "label": "Block List Project — weapons", "url": f"{BLP}/weapons.txt",                 "parser": _parse_hosts,        "cap": 0},
+        {"type": "domains", "label": "UT1 — weapons",                "url": f"{UT1}/weapons/domains",             "parser": _parse_plain,        "cap": 0},
+    ],
+
+    # ── P2P / Piracy ──────────────────────────────────────────────────────────
+    "p2p": [
+        {"type": "domains", "label": "Block List Project — piracy",  "url": f"{BLP}/piracy.txt",                  "parser": _parse_hosts,        "cap": 0},
+    ],
 }
 
 
@@ -251,9 +285,11 @@ def sync_category(name: str, sources: list[dict]):
         else:
             domains.extend(items)
 
-    overwrite(name, "domains.txt", domains)
+    if domains:
+        overwrite(name, "domains.txt", domains)
+    else:
+        print(f"    WARNING: all domain sources failed for [{name}] — domains.txt unchanged")
     if urls:
-        # merge preserves hand-curated entries already in urls.txt
         merge_into(name, "urls.txt", urls)
     if keywords:
         merge_into(name, "keywords.txt", keywords)

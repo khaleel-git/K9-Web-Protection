@@ -159,6 +159,38 @@ func DecodeRedirectHost(rawURL string) string {
 	return ""
 }
 
+// ── Communication apps allow list ────────────────────────────────────────────
+// These apps must stay accessible even when their category (chat-im,
+// social-networking) is active at the current filter level.
+// User's custom block list and Focus Mode still override this — only
+// the DB category lookup is bypassed, not user-defined rules.
+//
+// Trade-off: facebook.com is included because Messenger authenticates
+// through it. This means Facebook's news feed is also unblocked at any level
+// when Messenger access is needed. If that is undesirable, remove facebook.com
+// and direct users to add messenger.com to their manual allow list instead.
+var communicationAllowDomains = []string{
+	// WhatsApp
+	"whatsapp.com", "whatsapp.net", "wa.me",
+	// Messenger (facebook.com required for login/auth flow)
+	"messenger.com", "facebook.com",
+	// Instagram
+	"instagram.com", "cdninstagram.com",
+	// Shared Facebook media CDN (Messenger + Instagram images/video)
+	"fbcdn.net",
+	// Apple iMessage / Messages — already covered by builtinAllowDomains (apple.com, icloud.com)
+}
+
+func IsCommunicationAllowed(host string) bool {
+	h := strings.ToLower(host)
+	for _, d := range communicationAllowDomains {
+		if h == d || strings.HasSuffix(h, "."+d) {
+			return true
+		}
+	}
+	return false
+}
+
 // ── Built-in never-block list ────────────────────────────────────────────────
 // Critical OS/platform services that must never be blocked regardless of level.
 

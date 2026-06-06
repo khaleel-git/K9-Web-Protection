@@ -826,7 +826,7 @@ async function showUninstall() {
   const hasPw = await go().HasPassword()
   const pw = hasPw ? await requirePassword('Uninstall K10 Web Protection') : ''
   if (pw === null) return
-  try { await go().Uninstall(pw || ''); notify('K10 uninstalled. Please delete the app from /Applications.', 'ok') }
+  try { await go().Uninstall(pw || ''); notify('Uninstalling… the app will close now.', 'ok') }
   catch (e) { notify(String(e), 'err') }
 }
 window.showUninstall = showUninstall

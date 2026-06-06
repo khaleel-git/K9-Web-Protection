@@ -1,0 +1,47 @@
+#!/bin/bash
+# Runs as root AFTER files are copied.
+# Signs the app, registers LaunchAgents, enables PF rules, locks files.
+
+set -e
+
+APP_DST="/Applications/K10 Web Protection.app"
+BINARY="$APP_DST/Contents/MacOS/K10WebProtection"
+AGENT_DST="/Library/LaunchAgents/com.k10webprotection.plist"
+WATCHDOG_AGENT_DST="/Library/LaunchAgents/com.k10webprotection.watchdog.plist"
+WATCHDOG_BIN="/usr/local/bin/k10_watchdog.sh"
+PF_ANCHOR="/etc/pf.anchors/k10webprotection"
+PF_CONF="/etc/pf.conf"
+
+REAL_USER=$(stat -f "%Su" /dev/console 2>/dev/null || logname 2>/dev/null || echo "")
+REAL_UID=$(id -u "$REAL_USER" 2>/dev/null || echo "")
+
+# ── 1. Remove quarantine and ad-hoc sign ─────────────────────────────────────────
+xattr -cr "$APP_DST" 2>/dev/null || true
+codesign --force --deep --sign - "$APP_DST" 2>/dev/null || true
+
+# ── 2. Fix permissions ────────────────────────────────────────────────────────────
+chmod +x "$WATCHDOG_BIN"
+chmod 644 "$AGENT_DST" "$WATCHDOG_AGENT_DST"
+chown root:wheel "$AGENT_DST" "$WATCHDOG_AGENT_DST"
+
+# ── 3. Register LaunchAgents for the logged-in user ──────────────────────────────
+if [[ -n "$REAL_UID" ]]; then
+    launchctl bootstrap gui/"$REAL_UID" "$AGENT_DST"          2>/dev/null || true
+    launchctl bootstrap gui/"$REAL_UID" "$WATCHDOG_AGENT_DST" 2>/dev/null || true
+fi
+
+# ── 4. Wire PF anchor into pf.conf and reload ────────────────────────────────────
+if ! grep -q "k10webprotection" "$PF_CONF" 2>/dev/null; then
+    printf '\n# K10 Web Protection\nanchor "k10webprotection"\nload anchor "k10webprotection" from "%s"\n' \
+        "$PF_ANCHOR" >> "$PF_CONF"
+fi
+pfctl -E                              2>/dev/null || true
+pfctl -f "$PF_CONF"                   2>/dev/null || true
+pfctl -a k10webprotection -f "$PF_ANCHOR" 2>/dev/null || true
+
+# ── 5. Lock critical files against tampering ─────────────────────────────────────
+chflags uchg "$BINARY"              2>/dev/null || true
+chflags uchg "$AGENT_DST"           2>/dev/null || true
+chflags uchg "$WATCHDOG_AGENT_DST"  2>/dev/null || true
+
+exit 0

@@ -94,6 +94,7 @@ func NewApp() *App { return &App{} }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	registerShutdownObserver() // macOS shutdown/restart/logout: quit without password prompt
 	a.cfg = config.Load()
 	a.proxy = proxy.New(a.cfg, func(domain string) {
 		cat := database.DB.CategoryFor(domain)
@@ -464,15 +465,90 @@ func (a *App) Uninstall(password string) error {
 	if a.cfg.PasswordHash != "" && !a.verifyPassword(password) {
 		return errors.New("incorrect password")
 	}
-	a.proxy.Stop()
-	a.setSystemProxy(false)
-	hosts.Remove()
-	hosts.SetSafeSearch(false)
-	exec.Command("launchctl", "bootout", "system",
-		"/Library/LaunchAgents/com.k10webprotection.plist").Run()
-	os.Remove("/Library/LaunchAgents/com.k10webprotection.plist")
+
 	home, _ := os.UserHomeDir()
-	os.RemoveAll(home + "/.k10webprotection")
+	uid := os.Getuid()
+
+	// Write a privileged cleanup script. It runs as root via osascript so it
+	// can stop services, unlock uchg files, remove PF rules, and delete the app.
+	// The app quits after launching the script; the script runs in the background.
+	cleanupScript := fmt.Sprintf(`#!/bin/bash
+REAL_UID=%d
+APP="/Applications/K10 Web Protection.app"
+AGENT="/Library/LaunchAgents/com.k10webprotection.plist"
+WATCHDOG_AGENT="/Library/LaunchAgents/com.k10webprotection.watchdog.plist"
+WATCHDOG_BIN="/usr/local/bin/k10_watchdog.sh"
+PF_ANCHOR="/etc/pf.anchors/k10webprotection"
+PF_CONF="/etc/pf.conf"
+
+# Stop watchdog first so it stops re-locking files
+launchctl bootout gui/$REAL_UID "$WATCHDOG_AGENT" 2>/dev/null || true
+launchctl bootout gui/$REAL_UID "$AGENT"          2>/dev/null || true
+sleep 1
+
+# Unlock protected files
+chflags -R nouchg "$APP"            2>/dev/null || true
+chflags nouchg    "$AGENT"           2>/dev/null || true
+chflags nouchg    "$WATCHDOG_AGENT"  2>/dev/null || true
+chflags nouchg    "$WATCHDOG_BIN"    2>/dev/null || true
+
+# Remove app and system files
+rm -rf "$APP"
+rm -f  "$AGENT" "$WATCHDOG_AGENT" "$WATCHDOG_BIN"
+
+# Remove /etc/hosts entries
+sed -i '' '/^# K10-Web-Protection START$/,/^# K10-Web-Protection END$/d' /etc/hosts 2>/dev/null || true
+sed -i '' '/^# K10-SafeSearch START$/,/^# K10-SafeSearch END$/d'         /etc/hosts 2>/dev/null || true
+dscacheutil -flushcache 2>/dev/null || true
+killall -HUP mDNSResponder 2>/dev/null || true
+
+# Remove PF rules
+pfctl -a k10webprotection -F rules 2>/dev/null || true
+sed -i '' '/k10webprotection/d' "$PF_CONF" 2>/dev/null || true
+rm -f "$PF_ANCHOR"
+
+# Clear system proxy for all network services
+networksetup -listallnetworkservices 2>/dev/null | grep -v '[Aa]sterisk\|^$' | while IFS= read -r svc; do
+    networksetup -setwebproxystate       "$svc" off 2>/dev/null || true
+    networksetup -setsecurewebproxystate "$svc" off 2>/dev/null || true
+done
+
+# Remove user config and CA cert
+rm -rf "%s/.k10webprotection"
+
+rm -f "$0"
+`, uid, home)
+
+	tmp, err := os.CreateTemp("", "k10-uninstall-*.sh")
+	if err != nil {
+		return fmt.Errorf("could not prepare uninstall script: %w", err)
+	}
+	scriptPath := tmp.Name()
+	tmp.WriteString(cleanupScript)
+	tmp.Close()
+	os.Chmod(scriptPath, 0755)
+
+	// Stop proxy and clear system proxy from this process first
+	a.proxy.Stop()
+	atomic.StoreInt32(&a.proxyRunning, 0)
+	a.setSystemProxy(false)
+
+	// Run the cleanup script as root via osascript, detached (nohup + &) so
+	// this app can quit before the script finishes removing it.
+	osaCmd := fmt.Sprintf(
+		`do shell script "nohup bash %s >/tmp/k10-uninstall.log 2>&1 &" with administrator privileges`,
+		scriptPath,
+	)
+	if err := exec.Command("osascript", "-e", osaCmd).Run(); err != nil {
+		os.Remove(scriptPath)
+		return fmt.Errorf("admin privileges required to complete uninstall: %w", err)
+	}
+
+	// Quit the app — the cleanup script removes everything in the background
+	go func() {
+		time.Sleep(400 * time.Millisecond)
+		wailsruntime.Quit(a.ctx)
+	}()
 	return nil
 }
 

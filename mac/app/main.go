@@ -34,8 +34,10 @@ func main() {
 		OnStartup:  app.startup,
 		OnShutdown: app.shutdown,
 		OnBeforeClose: func(ctx context.Context) bool {
-			if atomic.LoadInt32(&app.quitAuth) == 1 {
-				return false // authorised quit — let Wails close normally
+			// Allow immediate quit during macOS shutdown/restart/logout,
+			// or when the user has already confirmed with their password.
+			if systemShuttingDown() || atomic.LoadInt32(&app.quitAuth) == 1 {
+				return false
 			}
 			wailsruntime.EventsEmit(ctx, "quit-requested")
 			return true // block close; frontend handles via modal

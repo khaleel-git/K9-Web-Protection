@@ -1,0 +1,25 @@
+#!/bin/bash
+# Runs as root BEFORE files are copied.
+# Stops running services and unlocks files so the installer can overwrite them.
+
+REAL_USER=$(stat -f "%Su" /dev/console 2>/dev/null || logname 2>/dev/null || echo "")
+REAL_UID=$(id -u "$REAL_USER" 2>/dev/null || echo "")
+
+APP_DST="/Applications/K10 Web Protection.app"
+AGENT_DST="/Library/LaunchAgents/com.k10webprotection.plist"
+WATCHDOG_AGENT_DST="/Library/LaunchAgents/com.k10webprotection.watchdog.plist"
+WATCHDOG_BIN="/usr/local/bin/k10_watchdog.sh"
+
+# Stop watchdog first — if left running it will re-lock files and fight the installer
+if [[ -n "$REAL_UID" ]]; then
+    launchctl bootout gui/"$REAL_UID" "$WATCHDOG_AGENT_DST" 2>/dev/null || true
+    launchctl bootout gui/"$REAL_UID" "$AGENT_DST"          2>/dev/null || true
+fi
+
+# Unlock all protected files so pkgbuild can overwrite them
+chflags -R nouchg "$APP_DST"          2>/dev/null || true
+chflags nouchg    "$AGENT_DST"         2>/dev/null || true
+chflags nouchg    "$WATCHDOG_AGENT_DST" 2>/dev/null || true
+chflags nouchg    "$WATCHDOG_BIN"      2>/dev/null || true
+
+exit 0

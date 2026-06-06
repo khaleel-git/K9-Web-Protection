@@ -137,10 +137,35 @@ func (d *Database) BlocksKeyword(rawURL string) bool {
 	return false
 }
 
-// CategoryFor returns the first database category key that contains host (or a
-// parent domain), e.g. "pornography", "social-networking". Returns "" if not found.
+// categoryPriority defines a deterministic lookup order for CategoryFor so that
+// domains appearing in multiple categories always resolve to the same one.
+// Security threats take precedence over content categories.
+var categoryPriority = []string{
+	"malware-spyware", "phishing", "suspicious",
+	"pornography", "extreme", "violence-hate",
+	"illegal-drugs", "hacking", "proxy-avoidance",
+	"adult-mature", "alternative-sexuality", "nudity",
+	"gambling", "personals-dating", "intimate-apparel",
+	"sex-education", "chat-im", "social-networking",
+	"alcohol", "tobacco", "weapons", "p2p",
+	"alternative-spirituality", "newsgroups-forums",
+	"abortion", "open-image-search", "personal-pages",
+	"lgbt", "unrated",
+}
+
+// CategoryFor returns the highest-priority database category that contains host
+// (or a parent domain), e.g. "pornography", "social-networking". Returns "" if
+// not found. Result is deterministic — categoryPriority defines the order.
 func (d *Database) CategoryFor(host string) string {
 	host = strings.ToLower(host)
+	for _, cat := range categoryPriority {
+		if set, ok := d.catDomains[cat]; ok {
+			if matchInSet(host, set) {
+				return cat
+			}
+		}
+	}
+	// Fall through to any category not listed in categoryPriority
 	for cat, set := range d.catDomains {
 		if matchInSet(host, set) {
 			return cat
@@ -280,18 +305,14 @@ func loadFlatKeywords(name string) []string {
 	if err != nil {
 		return nil
 	}
-	var raw map[string][]interface{}
+	var raw map[string][]string
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil
 	}
 	seen := make(map[string]struct{})
 	var out []string
 	for _, items := range raw {
-		for _, item := range items {
-			s, ok := item.(string)
-			if !ok {
-				continue
-			}
+		for _, s := range items {
 			s = strings.ToLower(strings.TrimSpace(s))
 			if s != "" {
 				if _, dup := seen[s]; !dup {

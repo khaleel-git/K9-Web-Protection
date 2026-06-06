@@ -30,6 +30,9 @@ LEVEL_DIR  = os.path.join(BASE_DIR, "levels")
 DB_DIR     = os.path.join(BASE_DIR, "..", "mac", "app", "internal", "database")
 
 KEYWORD_LIMIT = 20_000
+# Per-category cap so alphabetically-first categories (pornography) can't exhaust
+# the global budget before later categories contribute any keywords.
+PER_CAT_KEYWORD_CAP = 3_000
 
 # Per-category domain caps for the embedded binary.
 # Full source files are kept in categories/ with no cap.
@@ -74,40 +77,12 @@ def load_level(name: str) -> list[str]:
         return json.load(f)["categories"]
 
 
-def load_domains(categories: list[str]) -> list[str]:
-    seen: set[str] = set()
-    domains: list[str] = []
-    for cat in categories:
-        path = os.path.join(CAT_DIR, cat, "domains.txt")
-        if not os.path.exists(path):
-            continue
-        cat_domains: list[str] = []
-        with open(path) as f:
-            for line in f:
-                d = line.strip().lower()
-                if not d or d.startswith("#"):
-                    continue
-                for pfx in ("https://", "http://", "www."):
-                    if d.startswith(pfx):
-                        d = d[len(pfx):]
-                d = d.rstrip("/")
-                if d and d not in seen:
-                    seen.add(d)
-                    cat_domains.append(d)
-        cap = CATEGORY_CAPS.get(cat, 0)
-        if cap and len(cat_domains) > cap:
-            cat_domains = _even_sample(cat_domains, cap)
-        domains.extend(cat_domains)
-    return domains
-
-
 def _even_sample(items: list[str], cap: int) -> list[str]:
     """
     Return up to `cap` entries distributed evenly across first-character buckets.
     This ensures 'p' domains (e.g. pornpics.de) are included even when the
     total list is much larger than the cap and sorted alphabetically.
     """
-    from collections import defaultdict
     buckets: dict[str, list[str]] = defaultdict(list)
     for item in items:
         key = item[0] if item and (item[0].isalpha() or item[0].isdigit()) else "_"
@@ -143,6 +118,7 @@ def load_keywords(categories: list[str]) -> list[str]:
         path = os.path.join(CAT_DIR, cat, "keywords.txt")
         if not os.path.exists(path):
             continue
+        cat_kws: list[str] = []
         with open(path) as f:
             for line in f:
                 kw = line.strip().lower()
@@ -150,7 +126,12 @@ def load_keywords(categories: list[str]) -> list[str]:
                     continue
                 if kw not in seen:
                     seen.add(kw)
-                    keywords.append(kw)
+                    cat_kws.append(kw)
+        if len(cat_kws) > PER_CAT_KEYWORD_CAP:
+            cat_kws = cat_kws[:PER_CAT_KEYWORD_CAP]
+        keywords.extend(cat_kws)
+    if len(keywords) > KEYWORD_LIMIT:
+        print(f"  WARNING: keyword total {len(keywords):,} exceeds cap {KEYWORD_LIMIT:,} — truncating")
     return keywords[:KEYWORD_LIMIT]
 
 
@@ -316,10 +297,5 @@ if __name__ == "__main__":
         print_stats()
         sys.exit(0)
 
-    if args.level == "all":
-        for lv in ("minimal", "moderate", "default", "high", "monitor"):
-            build(lv)
-        print("\nDone. Re-run 'go build' in mac/app/ to embed updated lists.")
-    else:
-        build(args.level)
-        print("\nDone. Re-run 'go build' in mac/app/ to embed updated lists.")
+    build(args.level)  # --level all previously looped 5x but level is ignored; one pass suffices
+    print("\nDone. Re-run 'go build' in mac/app/ to embed updated lists.")

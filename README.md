@@ -1,8 +1,22 @@
-# K9 Web Protection
+# K10 Web Protection
 
-A free, open-source web filter that blocks adult content at the OS level, across every browser and app.
+A free, open-source parental control and web filter for macOS. Blocks adult content, malware, and distracting websites at the network level — across every browser, without a subscription.
 
-**Support:** [hello@khaleel.eu](mailto:hello@khaleel.eu)
+**Contact:** [hello@khaleel.eu](mailto:hello@khaleel.eu)
+
+---
+
+## Support This Project
+
+K10 Web Protection is free and open source. To distribute it on the internet **without Gatekeeper warnings**, an Apple Developer ID certificate is required — this costs **€99/year**.
+
+If this app has been useful to you, please consider contributing:
+
+> 💛 **[Donate via PayPal](https://www.paypal.com/paypalme/Khaleeleu)** — even €1 helps
+>
+> 🍎 **Goal: Apple Developer ID** — €99/year to sign and notarize releases so users can install without Gatekeeper warnings
+
+Every contribution goes directly toward keeping the app maintained, signed, and available for free.
 
 ---
 

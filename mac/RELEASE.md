@@ -7,6 +7,16 @@
 
 ---
 
+## Support This Project
+
+K10 Web Protection is **free and open source**. To distribute it without Gatekeeper warnings, an Apple Developer ID is required — this costs **€99/year**.
+
+> 💛 **[Donate via PayPal](https://www.paypal.com/paypalme/Khaleeleu)** — any amount appreciated
+>
+> 🍎 **Goal:** Raise €99 for an Apple Developer ID so future releases install without security warnings
+
+---
+
 ## ⚠️ Important — Read Before Installing
 
 ### Gatekeeper Warning (macOS Security)

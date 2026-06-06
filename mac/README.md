@@ -209,4 +209,18 @@ mac/
 
 ---
 
+---
+
+## Support This Project
+
+K10 Web Protection is free and open source. Distributing it **without Gatekeeper warnings** requires an Apple Developer ID certificate — **€99/year**.
+
+If this app has been useful to you, please consider donating:
+
+> 💛 **[Donate via PayPal](https://www.paypal.com/paypalme/Khaleeleu)** — even €1 helps keep this going
+>
+> 🍎 **Goal: Apple Developer ID** — €99/year to sign and notarize releases so users can install without security warnings
+
+---
+
 **Version:** 1.0.0 | **Platform:** macOS 12+ (Apple Silicon & Intel) | **License:** Open Source

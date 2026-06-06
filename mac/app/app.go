@@ -685,32 +685,39 @@ func itoa(n int) string {
 // trusted in macOS Keychain for the HTTPS block page to display correctly.
 func (a *App) CACertPath() string { return proxy.CACertPath() }
 
-// isCACertInstalled reports whether the K10 CA is present in the System keychain.
+// isCACertInstalled reports whether the K10 CA is present in the login keychain.
 func isCACertInstalled() bool {
+	loginKC := os.Getenv("HOME") + "/Library/Keychains/login.keychain-db"
 	out, err := exec.Command("security", "find-certificate",
 		"-c", "K10 Web Protection CA",
-		"/Library/Keychains/System.keychain",
+		loginKC,
 	).Output()
 	return err == nil && len(out) > 0
 }
 
-// InstallCACert adds the K10 root CA to the macOS System keychain and marks
-// it as a trusted root for TLS.
+// InstallCACert imports the K10 root CA into the user's login keychain and
+// marks it as a trusted root in the user trust domain.
 //
-// IMPORTANT: security(1) must be called directly from this GUI process — NOT
-// via osascript "do shell script with administrator privileges". When run as a
-// root subprocess via osascript, SecTrustSettingsSetTrustSettings cannot show
-// its interactive authorization dialog and fails with "no user interaction was
-// possible". Run directly, macOS shows its own native password prompt.
+// Why login keychain + user domain (not System keychain + admin domain):
+//   - System keychain needs root to write → "Write permissions error" from user process
+//   - Admin domain via osascript needs interactive auth → "no user interaction possible"
+//   - User-domain trust IS honoured by Chrome via SecTrustEvaluateWithError
+//   - No admin password needed; macOS may prompt for login keychain if locked
 func (a *App) InstallCACert() error {
 	certPath := proxy.CACertPath()
 	if _, err := os.Stat(certPath); err != nil {
 		return fmt.Errorf("CA certificate not yet generated — enable protection first")
 	}
+	loginKC := os.Getenv("HOME") + "/Library/Keychains/login.keychain-db"
+
+	// Import the cert (idempotent — ignore "already exists" errors)
+	exec.Command("security", "import", certPath, "-k", loginKC, "-A").Run()
+
+	// Set as trusted root in user domain — no admin password required
 	out, err := exec.Command(
 		"security", "add-trusted-cert",
-		"-d", "-r", "trustRoot",
-		"-k", "/Library/Keychains/System.keychain",
+		"-r", "trustRoot",
+		"-k", loginKC,
 		certPath,
 	).CombinedOutput()
 	if err != nil {

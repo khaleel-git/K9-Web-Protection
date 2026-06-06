@@ -1,8 +1,11 @@
+//go:build windows
+
 package main
 
 import (
 	"context"
 	"embed"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -18,11 +21,14 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "K9 Web Protection",
-		Width:     900,
-		Height:    640,
-		MinWidth:  800,
-		MinHeight: 560,
+		Title:         "K10 Web Protection",
+		Width:         960,
+		Height:        660,
+		MinWidth:      960,
+		MinHeight:     660,
+		MaxWidth:      960,
+		MaxHeight:     660,
+		DisableResize: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -30,22 +36,31 @@ func main() {
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
 		OnBeforeClose: func(ctx context.Context) bool {
-			wailsruntime.WindowMinimise(ctx)
-			return true
+			// Allow immediate quit during Windows shutdown/logoff,
+			// or when the user has already confirmed with their password.
+			if systemShuttingDown() || atomic.LoadInt32(&app.quitAuth) == 1 {
+				return false
+			}
+			wailsruntime.EventsEmit(ctx, "quit-requested")
+			return true // block close; frontend handles via modal
 		},
 		Bind: []interface{}{app},
 		Windows: &windows.Options{
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
+			DisableWindowIcon:    false,
 			Theme:                windows.Dark,
 			CustomTheme: &windows.ThemeSettings{
-				DarkModeTitleBar:  windows.RGB(10, 22, 40),
-				DarkModeTitleText: windows.RGB(232, 244, 255),
-				DarkModeBorder:    windows.RGB(22, 38, 64),
+				DarkModeTitleBar:   windows.RGB(13, 50, 96),
+				DarkModeTitleText:  windows.RGB(255, 255, 255),
+				DarkModeBorder:     windows.RGB(20, 73, 133),
+				LightModeTitleBar:  windows.RGB(13, 50, 96),
+				LightModeTitleText: windows.RGB(255, 255, 255),
+				LightModeBorder:    windows.RGB(20, 73, 133),
 			},
 		},
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: "com.k9webprotection.windows.app",
+			UniqueId: "com.k10webprotection.app",
 			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
 				wailsruntime.WindowShow(app.ctx)
 				wailsruntime.WindowUnminimise(app.ctx)

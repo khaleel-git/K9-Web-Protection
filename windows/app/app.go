@@ -1,3 +1,5 @@
+//go:build windows
+
 package main
 
 import (
@@ -10,7 +12,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -18,26 +19,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"k9webprotection/internal/config"
-	"k9webprotection/internal/database"
-	"k9webprotection/internal/hosts"
-	"k9webprotection/internal/proxy"
+	"k10webprotection/internal/config"
+	"k10webprotection/internal/database"
+	"k10webprotection/internal/hosts"
+	"k10webprotection/internal/proxy"
 )
 
 // ── Types exposed to frontend ─────────────────────────────────────────────────
 
 type Status struct {
-	ProxyRunning    bool                  `json:"proxyRunning"`
-	Layer1Active    bool                  `json:"layer1Active"`
-	BlockedToday    int                   `json:"blockedToday"`
-	TotalBlocked    int                   `json:"totalBlocked"`
-	ProxyPort       int                   `json:"proxyPort"`
-	TopBlocked      []config.BlockedEntry `json:"topBlocked"`
-	DBDomains       int                   `json:"dbDomains"`
-	DBURLs          int                   `json:"dbUrls"`
-	DBKeywords      int                   `json:"dbKeywords"`
-	InFocusMode     bool                  `json:"inFocusMode"`
-	FocusRemaining  int                   `json:"focusRemaining"` // seconds
+	ProxyRunning      bool                  `json:"proxyRunning"`
+	Layer1Active      bool                  `json:"layer1Active"`
+	BlockedToday      int                   `json:"blockedToday"`
+	TotalBlocked      int                   `json:"totalBlocked"`
+	ProxyPort         int                   `json:"proxyPort"`
+	TopBlocked        []config.BlockedEntry `json:"topBlocked"`
+	DBDomains         int                   `json:"dbDomains"`
+	DBURLs            int                   `json:"dbUrls"`
+	DBKeywords        int                   `json:"dbKeywords"`
+	InFocusMode       bool                  `json:"inFocusMode"`
+	FocusRemaining    int                   `json:"focusRemaining"` // seconds
+	InTimeRestriction bool                  `json:"inTimeRestriction"`
 }
 
 type BlocklistData struct {
@@ -52,10 +54,11 @@ type KeywordsData struct {
 }
 
 type ContentSettings struct {
-	BlockAdultContent bool `json:"blockAdultContent"`
-	BlockImageSearch  bool `json:"blockImageSearch"`
-	BlockYouTube      bool `json:"blockYouTube"`
-	SafeSearch        bool `json:"safeSearch"`
+	FilterLevel       string `json:"filterLevel"`
+	BlockAdultContent bool   `json:"blockAdultContent"`
+	BlockImageSearch  bool   `json:"blockImageSearch"`
+	BlockYouTube      bool   `json:"blockYouTube"`
+	SafeSearch        bool   `json:"safeSearch"`
 }
 
 type AdvancedSettings struct {
@@ -74,10 +77,10 @@ type FocusModeStatus struct {
 }
 
 type DisableDelayStatus struct {
-	DelayHours       int  `json:"delayHours"`
-	RequestPending   bool `json:"requestPending"`
-	ReadyToDisable   bool `json:"readyToDisable"`
-	RemainingSeconds int  `json:"remainingSeconds"`
+	DelayHours      int  `json:"delayHours"`
+	RequestPending  bool `json:"requestPending"`
+	ReadyToDisable  bool `json:"readyToDisable"`
+	RemainingSeconds int `json:"remainingSeconds"`
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -87,48 +90,43 @@ type App struct {
 	cfg          *config.Config
 	proxy        *proxy.Proxy
 	proxyRunning int32 // accessed via sync/atomic; 0=stopped 1=running
-
-	blockMu      sync.Mutex
-	recentBlocks map[string]time.Time // domain → last counted time (cooldown dedup)
+	quitAuth     int32 // 1 = quit authorised; lets OnBeforeClose pass through
 }
 
-func NewApp() *App { return &App{recentBlocks: make(map[string]time.Time)} }
+func NewApp() *App { return &App{} }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	registerShutdownObserver()
 	a.cfg = config.Load()
 	a.proxy = proxy.New(a.cfg, func(domain string) {
-		// Deduplicate: count the same domain at most once per 60 seconds
-		// so that one page visit (many sub-requests) = one block count.
-		a.blockMu.Lock()
-		last, seen := a.recentBlocks[domain]
-		if seen && time.Since(last) < 60*time.Second {
-			a.blockMu.Unlock()
-			return
-		}
-		a.recentBlocks[domain] = time.Now()
-		a.blockMu.Unlock()
-		a.cfg.IncrementBlocked(domain)
+		cat := database.DB.CategoryFor(domain)
+		a.cfg.IncrementBlocked(domain, cat)
 		a.cfg.Save()
 	})
+	if a.cfg.SafeSearch {
+		go hosts.SetSafeSearch(true)
+	}
+
+	// Always clear system proxy first — recovers from a previous force-kill
+	// that left the proxy enabled with nothing listening on the port.
+	a.setSystemProxy(false)
 	if a.cfg.AutoStart {
 		go func() {
 			if err := a.startProxyAndWait(); err == nil {
 				a.setSystemProxy(true)
 			}
 		}()
-	} else {
-		a.setSystemProxy(false)
 	}
 	go func() {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
 		for range sigs {
-			if a.cfg.PasswordHash != "" {
-				wailsruntime.EventsEmit(a.ctx, "kill-requested")
-			} else {
-				wailsruntime.Quit(a.ctx)
-			}
+			a.setSystemProxy(false)
+			a.proxy.Stop()
+			atomic.StoreInt32(&a.proxyRunning, 0)
+			a.cfg.Save()
+			os.Exit(0)
 		}
 	}()
 }
@@ -141,21 +139,29 @@ func (a *App) shutdown(_ context.Context) {
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
+func (a *App) ClearStats() error {
+	a.cfg.Stats.TopBlocked = nil
+	a.cfg.Stats.BlockedToday = 0
+	a.cfg.Stats.TotalBlocked = 0
+	return a.cfg.Save()
+}
+
 func (a *App) GetStatus() Status {
 	db := database.DB
 	rem := int(a.cfg.FocusModeRemaining().Seconds())
 	return Status{
-		ProxyRunning:   atomic.LoadInt32(&a.proxyRunning) == 1,
-		Layer1Active:   hosts.IsActive(),
-		BlockedToday:   a.cfg.Stats.BlockedToday,
-		TotalBlocked:   a.cfg.Stats.TotalBlocked,
-		ProxyPort:      a.cfg.ProxyPort,
-		TopBlocked:     a.cfg.Stats.TopBlocked,
-		DBDomains:      db.DomainCount(),
-		DBURLs:         db.URLCount(),
-		DBKeywords:     db.KeywordCount(),
-		InFocusMode:    a.cfg.InFocusMode(),
-		FocusRemaining: rem,
+		ProxyRunning:      atomic.LoadInt32(&a.proxyRunning) == 1,
+		Layer1Active:      hosts.IsActive(),
+		BlockedToday:      a.cfg.Stats.BlockedToday,
+		TotalBlocked:      a.cfg.Stats.TotalBlocked,
+		ProxyPort:         a.cfg.ProxyPort,
+		TopBlocked:        a.cfg.Stats.TopBlocked,
+		DBDomains:         db.DomainCount(),
+		DBURLs:            db.URLCount(),
+		DBKeywords:        db.KeywordCount(),
+		InFocusMode:       a.cfg.InFocusMode(),
+		FocusRemaining:    rem,
+		InTimeRestriction: a.cfg.InTimeRestriction(),
 	}
 }
 
@@ -192,7 +198,6 @@ func (a *App) DisableProtection(password string) error {
 	return a.cfg.Save()
 }
 
-// RequestDisable registers a disable intent when delay is configured.
 func (a *App) RequestDisable() error {
 	if a.cfg.DisableDelayHours <= 0 {
 		return errors.New("no delay configured")
@@ -281,11 +286,40 @@ func (a *App) RemoveKeyword(keyword string) error {
 
 func (a *App) GetContentSettings() ContentSettings {
 	return ContentSettings{
+		FilterLevel:       a.cfg.FilterLevel,
 		BlockAdultContent: a.cfg.BlockAdultContent,
 		BlockImageSearch:  a.cfg.BlockImageSearch,
 		BlockYouTube:      a.cfg.BlockYouTube,
 		SafeSearch:        a.cfg.SafeSearch,
 	}
+}
+
+// SetFilterLevel saves a standard filter level without requiring a password.
+func (a *App) SetFilterLevel(level string) error {
+	switch level {
+	case "high", "default", "moderate", "minimal":
+		// allowed without password
+	default:
+		return errors.New("use SaveContentSettings for monitor/custom levels")
+	}
+	a.cfg.FilterLevel = level
+	return a.cfg.Save()
+}
+
+func (a *App) SaveContentSettings(password string, s ContentSettings) error {
+	if a.cfg.PasswordHash != "" && !a.verifyPassword(password) {
+		return errors.New("incorrect password")
+	}
+	a.cfg.FilterLevel = s.FilterLevel
+	a.cfg.BlockAdultContent = s.BlockAdultContent
+	a.cfg.BlockImageSearch = s.BlockImageSearch
+	a.cfg.BlockYouTube = s.BlockYouTube
+	a.cfg.SafeSearch = s.SafeSearch
+	if err := a.cfg.Save(); err != nil {
+		return err
+	}
+	go hosts.SetSafeSearch(s.SafeSearch)
+	return nil
 }
 
 // ── Advanced Settings ─────────────────────────────────────────────────────────
@@ -305,17 +339,6 @@ func (a *App) SaveAdvancedSettings(password string, s AdvancedSettings) error {
 	if s.BlockedMessage != "" {
 		a.cfg.BlockedMessage = s.BlockedMessage
 	}
-	return a.cfg.Save()
-}
-
-func (a *App) SaveContentSettings(password string, s ContentSettings) error {
-	if a.cfg.PasswordHash != "" && !a.verifyPassword(password) {
-		return errors.New("incorrect password")
-	}
-	a.cfg.BlockAdultContent = s.BlockAdultContent
-	a.cfg.BlockImageSearch = s.BlockImageSearch
-	a.cfg.BlockYouTube = s.BlockYouTube
-	a.cfg.SafeSearch = s.SafeSearch
 	return a.cfg.Save()
 }
 
@@ -344,11 +367,55 @@ func (a *App) StartFocusMode(minutes int) error {
 	return a.cfg.Save()
 }
 
+func (a *App) StopFocusMode(password string) error {
+	if a.cfg.PasswordHash != "" && !a.verifyPassword(password) {
+		return errors.New("incorrect password")
+	}
+	a.cfg.StopFocusMode()
+	return a.cfg.Save()
+}
+
 func (a *App) GetFocusMode() FocusModeStatus {
 	return FocusModeStatus{
 		Active:    a.cfg.InFocusMode(),
 		Remaining: int(a.cfg.FocusModeRemaining().Seconds()),
 	}
+}
+
+// ── Focus Sites ───────────────────────────────────────────────────────────────
+
+func (a *App) GetFocusSites() []config.FocusSite {
+	return a.cfg.GetFocusSites()
+}
+
+func (a *App) SetFocusSiteActive(domain string, active bool) error {
+	a.cfg.SetFocusSiteActive(domain, active)
+	return a.cfg.Save()
+}
+
+func (a *App) AddFocusSite(domain string) error {
+	domain = cleanDomain(domain)
+	if domain == "" {
+		return errors.New("invalid domain")
+	}
+	a.cfg.AddFocusSite(domain)
+	return a.cfg.Save()
+}
+
+func (a *App) RemoveFocusSite(domain string) error {
+	a.cfg.RemoveFocusSite(domain)
+	return a.cfg.Save()
+}
+
+// ── Time Restrictions ─────────────────────────────────────────────────────────
+
+func (a *App) GetTimeRestrictions() config.TimeRestrictions {
+	return a.cfg.GetTimeRestrictions()
+}
+
+func (a *App) SaveTimeRestrictions(tr config.TimeRestrictions) error {
+	a.cfg.SaveTimeRestrictions(tr)
+	return a.cfg.Save()
 }
 
 // ── Password ──────────────────────────────────────────────────────────────────
@@ -377,6 +444,7 @@ func (a *App) ConfirmQuit(password string) error {
 	if !a.verifyPassword(password) {
 		return errors.New("incorrect password")
 	}
+	atomic.StoreInt32(&a.quitAuth, 1)
 	wailsruntime.Quit(a.ctx)
 	return nil
 }
@@ -395,48 +463,119 @@ func (a *App) Uninstall(password string) error {
 		return errors.New("incorrect password")
 	}
 
-	// Clean up protection immediately.
+	home, _ := os.UserHomeDir()
+	exePath, _ := os.Executable()
+	appDir := filepath.Dir(exePath)
+
+	cleanupScript := fmt.Sprintf(`
+# Disable proxy
+$key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
+Set-ItemProperty -Path $key -Name ProxyEnable -Value 0 -ErrorAction SilentlyContinue
+
+# Notify WinINet
+$sig = @'
+using System;using System.Runtime.InteropServices;
+public class WinINet{[DllImport("wininet.dll")]public static extern bool InternetSetOption(IntPtr h,int o,IntPtr b,int l);}
+'@
+Add-Type -TypeDefinition $sig -ErrorAction SilentlyContinue
+[WinINet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0)|Out-Null
+[WinINet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)|Out-Null
+
+# Remove startup entry
+Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'K10WebProtection' -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'K10WebProtection' -ErrorAction SilentlyContinue
+
+# Remove hosts entries
+$hostsPath = "$env:SystemRoot\System32\drivers\etc\hosts"
+if (Test-Path $hostsPath) {
+    $c = [System.IO.File]::ReadAllText($hostsPath)
+    $c = [System.Text.RegularExpressions.Regex]::Replace($c,'(?s)\r?\n# K10-Web-Protection START.*?# K10-Web-Protection END\r?\n?','')
+    $c = [System.Text.RegularExpressions.Regex]::Replace($c,'(?s)\r?\n# K10-SafeSearch START.*?# K10-SafeSearch END\r?\n?','')
+    [System.IO.File]::WriteAllText($hostsPath,$c)
+}
+ipconfig /flushdns | Out-Null
+
+# Remove K10 CA from Windows trust stores
+Get-ChildItem Cert:\LocalMachine\Root | Where-Object {$_.Subject -like '*K10 Web Protection*'} | Remove-Item -ErrorAction SilentlyContinue
+Get-ChildItem Cert:\CurrentUser\Root  | Where-Object {$_.Subject -like '*K10 Web Protection*'} | Remove-Item -ErrorAction SilentlyContinue
+
+# Remove user data
+Remove-Item -Path '%s\.k10webprotection' -Recurse -Force -ErrorAction SilentlyContinue
+
+# Remove app directory after delay so the process has exited
+Start-Sleep -Seconds 3
+Remove-Item -Path '%s' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+`, home, appDir)
+
+	tmp, err := os.CreateTemp("", "k10-uninstall-*.ps1")
+	if err != nil {
+		return fmt.Errorf("could not prepare uninstall script: %w", err)
+	}
+	scriptPath := tmp.Name()
+	tmp.WriteString(cleanupScript)
+	tmp.Close()
+
 	a.proxy.Stop()
 	atomic.StoreInt32(&a.proxyRunning, 0)
 	a.setSystemProxy(false)
-	hosts.Remove()
 
-	// Launch the NSIS uninstaller silently via a detached cmd.exe that waits
-	// 2 seconds for us to exit before running.  The NSIS uninstaller handles
-	// removing files, shortcuts, registry entries, and the config directory.
-	if exePath, err := os.Executable(); err == nil {
-		uninstaller := filepath.Join(filepath.Dir(exePath), "Uninstall.exe")
-		if _, statErr := os.Stat(uninstaller); statErr == nil {
-			cmd := exec.Command("cmd", "/c",
-				fmt.Sprintf(`timeout /t 2 /nobreak >nul && "%s" /S`, uninstaller))
-			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			cmd.Start() //nolint:errcheck — fire-and-forget
-		} else {
-			// Fallback when not installed via NSIS (dev / portable build).
-			exec.Command("reg", "delete",
-				`HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
-				"/v", "K9WebProtection", "/f").Run()
-			appData := os.Getenv("APPDATA")
-			os.RemoveAll(filepath.Join(appData, "K9WebProtection"))
-		}
+	// Run elevated and detached so the app can quit before the script finishes.
+	cmd := exec.Command("powershell", "-Command",
+		fmt.Sprintf(`Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File "%s"' -Verb RunAs`,
+			strings.ReplaceAll(scriptPath, `"`, `\"`),
+		),
+	)
+	if err := cmd.Run(); err != nil {
+		os.Remove(scriptPath)
+		return fmt.Errorf("administrator privileges required to complete uninstall: %w", err)
 	}
 
-	wailsruntime.Quit(a.ctx)
+	go func() {
+		time.Sleep(400 * time.Millisecond)
+		wailsruntime.Quit(a.ctx)
+	}()
+	return nil
+}
+
+// ── CA certificate ────────────────────────────────────────────────────────────
+
+func (a *App) CACertPath() string { return proxy.CACertPath() }
+
+// InstallCACert imports the K10 root CA into the Windows Trusted Root store so
+// that HTTPS block pages display correctly in Chrome, Edge, and Firefox.
+// A UAC elevation prompt will appear asking for administrator credentials.
+func (a *App) InstallCACert() error {
+	certPath := proxy.CACertPath()
+	if _, err := os.Stat(certPath); err != nil {
+		return fmt.Errorf("CA certificate not found — enable protection first")
+	}
+
+	script := fmt.Sprintf(
+		`Import-Certificate -FilePath '%s' -CertStoreLocation Cert:\LocalMachine\Root`,
+		strings.ReplaceAll(certPath, "'", "''"),
+	)
+	tmp, err := os.CreateTemp("", "k10-ca-install-*.ps1")
+	if err != nil {
+		return fmt.Errorf("could not prepare install script: %w", err)
+	}
+	scriptPath := tmp.Name()
+	tmp.WriteString(script)
+	tmp.Close()
+	defer os.Remove(scriptPath)
+
+	cmd := exec.Command("powershell", "-Command",
+		fmt.Sprintf(`Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File "%s"' -Verb RunAs -Wait`,
+			strings.ReplaceAll(scriptPath, `"`, `\"`),
+		),
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("administrator access required to install CA certificate: %w", err)
+	}
 	return nil
 }
 
 // ── Internals ─────────────────────────────────────────────────────────────────
-
-func (a *App) startProxy() {
-	if !atomic.CompareAndSwapInt32(&a.proxyRunning, 0, 1) {
-		return
-	}
-	go func() {
-		if err := a.proxy.Start(); err != nil {
-			atomic.StoreInt32(&a.proxyRunning, 0)
-		}
-	}()
-}
 
 func (a *App) startProxyAndWait() error {
 	if !atomic.CompareAndSwapInt32(&a.proxyRunning, 0, 1) {
@@ -467,21 +606,54 @@ func (a *App) startProxyAndWait() error {
 	return fmt.Errorf("proxy did not start on port %d within 5 seconds", a.cfg.ProxyPort)
 }
 
-// setSystemProxy configures the Windows system-wide HTTP/HTTPS proxy via registry.
+// setSystemProxy sets or clears the Windows system-wide HTTP/HTTPS proxy via registry.
 func (a *App) setSystemProxy(on bool) {
 	const keyPath = `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
 	if on {
 		server := fmt.Sprintf("127.0.0.1:%d", a.cfg.ProxyPort)
 		exec.Command("reg", "add", keyPath, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f").Run()
 		exec.Command("reg", "add", keyPath, "/v", "ProxyServer", "/t", "REG_SZ", "/d", server, "/f").Run()
-		exec.Command("reg", "add", keyPath, "/v", "ProxyOverride", "/t", "REG_SZ", "/d", "localhost;127.0.0.1;<local>", "/f").Run()
+		exec.Command("reg", "add", keyPath, "/v", "ProxyOverride", "/t", "REG_SZ", "/d",
+			"localhost;127.0.0.1;<local>;*.microsoft.com;*.windowsupdate.com", "/f").Run()
+		spawnProxyWatchdog()
 	} else {
 		exec.Command("reg", "add", keyPath, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "0", "/f").Run()
 	}
-	// Notify WinINet that proxy settings changed so running apps pick it up
-	exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
-		`try { Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class WinINet{[DllImport("wininet.dll")]public static extern bool InternetSetOption(IntPtr h,int o,IntPtr b,int l);}' -ErrorAction Stop } catch {}; [WinINet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0); [WinINet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)`,
-	).Run()
+	notifyProxyChange()
+}
+
+// notifyProxyChange signals WinINet/WinHTTP that proxy settings have changed
+// so that running applications pick up the new settings without restarting.
+func notifyProxyChange() {
+	wininet := syscall.NewLazyDLL("wininet.dll")
+	setOpt := wininet.NewProc("InternetSetOptionW")
+	const (
+		INTERNET_OPTION_SETTINGS_CHANGED = 39
+		INTERNET_OPTION_REFRESH          = 37
+	)
+	setOpt.Call(0, INTERNET_OPTION_SETTINGS_CHANGED, 0, 0)
+	setOpt.Call(0, INTERNET_OPTION_REFRESH, 0, 0)
+}
+
+// spawnProxyWatchdog starts a hidden PowerShell process that monitors this
+// process and clears the system proxy the moment it exits — handles SIGKILL
+// and force-quit scenarios where shutdown() never runs.
+func spawnProxyWatchdog() {
+	pid := os.Getpid()
+	script := fmt.Sprintf(`
+$pid = %d
+while (Get-Process -Id $pid -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 500 }
+$k = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
+Set-ItemProperty -Path $k -Name ProxyEnable -Value 0 -ErrorAction SilentlyContinue
+try {
+    Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class WI{[DllImport("wininet.dll")]public static extern bool InternetSetOption(IntPtr h,int o,IntPtr b,int l);}' -ErrorAction Stop
+    [WI]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0)|Out-Null
+    [WI]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)|Out-Null
+} catch {}
+`, pid)
+	cmd := exec.Command("powershell", "-WindowStyle", "Hidden", "-NoProfile", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.Start() //nolint:errcheck — intentionally fire-and-forget
 }
 
 func cleanDomain(d string) string {
@@ -490,16 +662,4 @@ func cleanDomain(d string) string {
 		d = strings.TrimPrefix(d, pfx)
 	}
 	return strings.Split(d, "/")[0]
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	buf := make([]byte, 0, 8)
-	for n > 0 {
-		buf = append([]byte{byte('0' + n%10)}, buf...)
-		n /= 10
-	}
-	return string(buf)
 }

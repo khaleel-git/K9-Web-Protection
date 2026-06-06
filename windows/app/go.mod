@@ -1,4 +1,4 @@
-module k9webprotection
+module k10webprotection
 
 go 1.22.0
 

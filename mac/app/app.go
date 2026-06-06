@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -106,14 +109,7 @@ func (a *App) startup(ctx context.Context) {
 		go hosts.SetSafeSearch(true)
 	}
 
-	// Auto-install the MITM CA into System keychain on first run (or after reinstall).
-	// Runs after a short delay so the app window is visible before the password dialog.
-	go func() {
-		time.Sleep(2 * time.Second)
-		if !isCACertInstalled() {
-			a.InstallCACert() //nolint:errcheck
-		}
-	}()
+
 	// Always clear system proxy first — recovers from a previous force-kill
 	// that left the proxy enabled with nothing listening on the port.
 	a.setSystemProxy(false)
@@ -685,43 +681,82 @@ func itoa(n int) string {
 // trusted in macOS Keychain for the HTTPS block page to display correctly.
 func (a *App) CACertPath() string { return proxy.CACertPath() }
 
-// isCACertInstalled reports whether the K10 CA is present in the login keychain.
-func isCACertInstalled() bool {
-	loginKC := os.Getenv("HOME") + "/Library/Keychains/login.keychain-db"
-	out, err := exec.Command("security", "find-certificate",
-		"-c", "K10 Web Protection CA",
-		loginKC,
-	).Output()
-	return err == nil && len(out) > 0
-}
-
-// InstallCACert imports the K10 root CA into the user's login keychain and
-// marks it as a trusted root in the user trust domain.
+// InstallCACert generates a macOS Configuration Profile (.mobileconfig) embedding
+// the K10 root CA and opens it so the user can approve it in System Settings.
 //
-// Why login keychain + user domain (not System keychain + admin domain):
-//   - System keychain needs root to write → "Write permissions error" from user process
-//   - Admin domain via osascript needs interactive auth → "no user interaction possible"
-//   - User-domain trust IS honoured by Chrome via SecTrustEvaluateWithError
-//   - No admin password needed; macOS may prompt for login keychain if locked
+// Why a profile instead of `security add-trusted-cert`:
+//   - Chrome 117+ uses the Chrome Root Store and its own verifier. It only picks up
+//     custom root CAs that are installed via the macOS System keychain with admin-domain
+//     trust — but that requires BOTH root (to write System.keychain) AND interactive
+//     authorization (SecTrustSettingsSetTrustSettings). No single approach satisfies both.
+//   - Configuration profiles (PayloadType: com.apple.security.root) install the cert
+//     into the System keychain with full admin trust in one user-approved step.
+//   - Chrome, Safari, Firefox, and every other browser unconditionally trust profile-
+//     installed root CAs.
 func (a *App) InstallCACert() error {
 	certPath := proxy.CACertPath()
-	if _, err := os.Stat(certPath); err != nil {
-		return fmt.Errorf("CA certificate not yet generated — enable protection first")
-	}
-	loginKC := os.Getenv("HOME") + "/Library/Keychains/login.keychain-db"
-
-	// Import the cert (idempotent — ignore "already exists" errors)
-	exec.Command("security", "import", certPath, "-k", loginKC, "-A").Run()
-
-	// Set as trusted root in user domain — no admin password required
-	out, err := exec.Command(
-		"security", "add-trusted-cert",
-		"-r", "trustRoot",
-		"-k", loginKC,
-		certPath,
-	).CombinedOutput()
+	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
-		return fmt.Errorf("install failed — %s", strings.TrimSpace(string(out)))
+		return fmt.Errorf("CA certificate not found — enable protection first")
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return fmt.Errorf("invalid certificate format")
+	}
+	certB64 := base64.StdEncoding.EncodeToString(block.Bytes)
+
+	profile := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadCertificateFileName</key>
+			<string>K10WebProtectionCA.crt</string>
+			<key>PayloadContent</key>
+			<data>%s</data>
+			<key>PayloadDescription</key>
+			<string>K10 Web Protection root CA</string>
+			<key>PayloadDisplayName</key>
+			<string>K10 Web Protection CA</string>
+			<key>PayloadIdentifier</key>
+			<string>com.k10webprotection.ca</string>
+			<key>PayloadOrganization</key>
+			<string>K10 Web Protection</string>
+			<key>PayloadType</key>
+			<string>com.apple.security.root</string>
+			<key>PayloadUUID</key>
+			<string>A1B2C3D4-E5F6-7890-ABCD-EF1234567890</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Installs the K10 Web Protection CA so HTTPS block pages display correctly in all browsers.</string>
+	<key>PayloadDisplayName</key>
+	<string>K10 Web Protection Certificate</string>
+	<key>PayloadIdentifier</key>
+	<string>com.k10webprotection.profile</string>
+	<key>PayloadOrganization</key>
+	<string>K10 Web Protection</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>B2C3D4E5-F6A7-8901-BCDE-F12345678901</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>`, certB64)
+
+	tmp := filepath.Join(os.TempDir(), "K10WebProtectionCA.mobileconfig")
+	if err := os.WriteFile(tmp, []byte(profile), 0644); err != nil {
+		return fmt.Errorf("failed to write profile: %v", err)
+	}
+	if err := exec.Command("open", tmp).Run(); err != nil {
+		return fmt.Errorf("failed to open profile installer: %v", err)
 	}
 	return nil
 }

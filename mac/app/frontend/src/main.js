@@ -588,7 +588,7 @@ async function installCA() {
   try {
     await go().InstallCACert()
     status.style.color = '#1a8a3a'
-    status.textContent = 'Trusted successfully. Restart your browser.'
+    status.textContent = 'Profile opened → System Settings → Privacy & Security → Profiles → Install. Then restart Chrome.'
   } catch (e) {
     status.style.color = '#cc3333'
     status.textContent = String(e)

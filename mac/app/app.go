@@ -695,20 +695,24 @@ func isCACertInstalled() bool {
 }
 
 // InstallCACert adds the K10 root CA to the macOS System keychain and marks
-// it as a trusted root for TLS. Uses osascript to request admin privileges so
-// Chrome (which only trusts System keychain root CAs) accepts the MITM cert.
+// it as a trusted root for TLS.
+//
+// IMPORTANT: security(1) must be called directly from this GUI process — NOT
+// via osascript "do shell script with administrator privileges". When run as a
+// root subprocess via osascript, SecTrustSettingsSetTrustSettings cannot show
+// its interactive authorization dialog and fails with "no user interaction was
+// possible". Run directly, macOS shows its own native password prompt.
 func (a *App) InstallCACert() error {
 	certPath := proxy.CACertPath()
 	if _, err := os.Stat(certPath); err != nil {
-		return fmt.Errorf("CA certificate not yet generated — start protection first")
+		return fmt.Errorf("CA certificate not yet generated — enable protection first")
 	}
-	// Shell-quote the path in case the home dir contains special characters
-	quotedPath := "'" + strings.ReplaceAll(certPath, "'", "'\\''") + "'"
-	osaCmd := fmt.Sprintf(
-		`do shell script "security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain %s" with administrator privileges`,
-		quotedPath,
-	)
-	out, err := exec.Command("osascript", "-e", osaCmd).CombinedOutput()
+	out, err := exec.Command(
+		"security", "add-trusted-cert",
+		"-d", "-r", "trustRoot",
+		"-k", "/Library/Keychains/System.keychain",
+		certPath,
+	).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("install failed — %s", strings.TrimSpace(string(out)))
 	}

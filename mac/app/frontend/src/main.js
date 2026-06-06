@@ -588,7 +588,7 @@ async function installCA() {
   try {
     await go().InstallCACert()
     status.style.color = '#1a8a3a'
-    status.textContent = 'Profile opened → System Settings → Privacy & Security → Profiles → Install. Then restart Chrome.'
+    status.textContent = 'System Settings opened → click K10 Web Protection Certificate → Install → enter Mac password → restart Chrome.'
   } catch (e) {
     status.style.color = '#cc3333'
     status.textContent = String(e)

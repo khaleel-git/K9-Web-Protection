@@ -755,8 +755,14 @@ func (a *App) InstallCACert() error {
 	if err := os.WriteFile(tmp, []byte(profile), 0644); err != nil {
 		return fmt.Errorf("failed to write profile: %v", err)
 	}
+	// Register the profile with macOS (triggers "Profile Downloaded" notification)
 	if err := exec.Command("open", tmp).Run(); err != nil {
 		return fmt.Errorf("failed to open profile installer: %v", err)
 	}
+	// Open System Settings directly to the profiles/device-management page.
+	// macOS 13+ (Ventura/Sonoma/Sequoia): General → VPN & Device Management
+	// macOS 12 (Monterey): System Preferences → Profiles
+	time.Sleep(800 * time.Millisecond)
+	exec.Command("open", "x-apple.systempreferences:com.apple.preferences.configurationprofiles").Run()
 	return nil
 }

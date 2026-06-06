@@ -308,9 +308,12 @@ Go to Setup → Web Site Exceptions → Allow List → add the domain.
 1. Check that the filter level includes the relevant category (Setup → Web Categories)
 2. Add it manually: Setup → Web Site Exceptions → Block List
 
-**The block page shows a certificate warning instead of the K10 page?**
+**The block page shows a certificate warning (`NET::ERR_CERT_AUTHORITY_INVALID`)?**
 
-The K10 CA certificate needs to be trusted. Go to Setup → Safe Search → Install Certificate, or open `~/.k10webprotection/ca.crt` in Keychain Access and set it to Always Trust.
+K10 installs its CA certificate automatically on first launch. If you still see this warning:
+1. Go to **Setup → Safe Search → Install Certificate** and enter your Mac password
+2. Fully quit and relaunch Chrome (`⌘Q`, not just close the window)
+3. If the warning persists, open **Keychain Access** → **System** keychain → find "K10 Web Protection CA" → double-click → Trust → SSL → **Always Trust**
 
 ---
 

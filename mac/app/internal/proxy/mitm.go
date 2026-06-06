@@ -62,12 +62,16 @@ func initMITM() {
 			return
 		}
 
+		subjectKeyId := make([]byte, 20)
+		rand.Read(subjectKeyId)
+
 		tmpl := &x509.Certificate{
 			SerialNumber: big.NewInt(1),
 			Subject: pkix.Name{
 				CommonName:   "K10 Web Protection CA",
 				Organization: []string{"K10 Web Protection"},
 			},
+			SubjectKeyId:          subjectKeyId,
 			NotBefore:             time.Now().Add(-time.Hour),
 			NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
 			IsCA:                  true,
@@ -139,9 +143,12 @@ func leafCert(domain string) (*tls.Certificate, error) {
 	}
 
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	leafKeyId := make([]byte, 20)
+	rand.Read(leafKeyId)
 	tmpl := &x509.Certificate{
 		SerialNumber: serial,
 		Subject:      pkix.Name{CommonName: domain},
+		SubjectKeyId: leafKeyId,
 		DNSNames:     []string{domain, "*." + domain},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(24 * time.Hour),

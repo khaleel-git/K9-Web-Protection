@@ -105,6 +105,15 @@ func (a *App) startup(ctx context.Context) {
 	if a.cfg.SafeSearch {
 		go hosts.SetSafeSearch(true)
 	}
+
+	// Auto-install the MITM CA into System keychain on first run (or after reinstall).
+	// Runs after a short delay so the app window is visible before the password dialog.
+	go func() {
+		time.Sleep(2 * time.Second)
+		if !isCACertInstalled() {
+			a.InstallCACert() //nolint:errcheck
+		}
+	}()
 	// Always clear system proxy first — recovers from a previous force-kill
 	// that left the proxy enabled with nothing listening on the port.
 	a.setSystemProxy(false)
@@ -676,27 +685,32 @@ func itoa(n int) string {
 // trusted in macOS Keychain for the HTTPS block page to display correctly.
 func (a *App) CACertPath() string { return proxy.CACertPath() }
 
-// InstallCACert adds the K10 root CA to the current user's login keychain
-// and marks it as trusted. Runs security(1) directly so macOS can show its
-// own interactive authorization dialog (osascript breaks that dialog).
+// isCACertInstalled reports whether the K10 CA is present in the System keychain.
+func isCACertInstalled() bool {
+	out, err := exec.Command("security", "find-certificate",
+		"-c", "K10 Web Protection CA",
+		"/Library/Keychains/System.keychain",
+	).Output()
+	return err == nil && len(out) > 0
+}
+
+// InstallCACert adds the K10 root CA to the macOS System keychain and marks
+// it as a trusted root for TLS. Uses osascript to request admin privileges so
+// Chrome (which only trusts System keychain root CAs) accepts the MITM cert.
 func (a *App) InstallCACert() error {
 	certPath := proxy.CACertPath()
-
-	// Step 1: import the cert into the login keychain (no admin needed)
-	loginKC := os.Getenv("HOME") + "/Library/Keychains/login.keychain-db"
-	exec.Command("security", "import", certPath, "-k", loginKC).Run()
-
-	// Step 2: mark it trusted for SSL/TLS — macOS will show its password dialog
-	out, err := exec.Command(
-		"security", "add-trusted-cert",
-		"-r", "trustRoot",
-		"-k", loginKC,
-		certPath,
-	).CombinedOutput()
+	if _, err := os.Stat(certPath); err != nil {
+		return fmt.Errorf("CA certificate not yet generated — start protection first")
+	}
+	// Shell-quote the path in case the home dir contains special characters
+	quotedPath := "'" + strings.ReplaceAll(certPath, "'", "'\\''") + "'"
+	osaCmd := fmt.Sprintf(
+		`do shell script "security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain %s" with administrator privileges`,
+		quotedPath,
+	)
+	out, err := exec.Command("osascript", "-e", osaCmd).CombinedOutput()
 	if err != nil {
-		// Fall back: open the cert in Keychain Access for manual installation
-		exec.Command("open", certPath).Run()
-		return fmt.Errorf("auto-install failed — Keychain Access has been opened. Add the certificate and set Trust > SSL > Always Trust. (%s)", strings.TrimSpace(string(out)))
+		return fmt.Errorf("install failed — %s", strings.TrimSpace(string(out)))
 	}
 	return nil
 }

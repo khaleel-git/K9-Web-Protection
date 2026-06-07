@@ -10,6 +10,16 @@ venv/
 build/
 dist/
 *.spec
+
+# Un-ignore the Windows app installer scripts inside build/windows/
+# (the root build/ rule above would otherwise catch them)
+!windows/app/build/
+!windows/app/build/windows/
+!windows/app/build/windows/wails.exe.manifest
+!windows/app/build/windows/installer/
+!windows/app/build/windows/installer/project.nsi
+!windows/app/build/windows/installer/setup-system.ps1
+!windows/app/build/windows/installer/teardown-system.ps1
 .DS_Store
 
 # Compiled Go binaries

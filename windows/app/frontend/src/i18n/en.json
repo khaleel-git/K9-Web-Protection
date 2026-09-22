@@ -4,6 +4,8 @@
   "nav.status.inactive": "Inactive",
   "nav.logout": "Logout",
   "nav.logout.title": "Disable Protection",
+  "nav.exit": "Exit",
+  "nav.exit.title": "Exit K10 Web Protection",
   "nav.tab.home": "HOME",
   "nav.tab.reports": "VIEW INTERNET ACTIVITY",
   "nav.tab.setup": "SETUP",

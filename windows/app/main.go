@@ -48,8 +48,9 @@ func main() {
 			if systemShuttingDown() || atomic.LoadInt32(&app.quitAuth) == 1 {
 				return false
 			}
-			wailsruntime.EventsEmit(ctx, "quit-requested")
-			return true // block close; frontend handles via modal
+			// X button minimizes to tray; only the tray "Exit" item can trigger the quit modal.
+			wailsruntime.WindowHide(ctx)
+			return true
 		},
 		Bind: []interface{}{app},
 		Windows: &windows.Options{

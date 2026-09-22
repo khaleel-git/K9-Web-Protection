@@ -17,9 +17,9 @@ import (
 	"syscall"
 	"time"
 
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/idna"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"k10webprotection/internal/config"
 	"k10webprotection/internal/database"
@@ -27,6 +27,7 @@ import (
 	"k10webprotection/internal/hosts"
 	"k10webprotection/internal/i18n"
 	"k10webprotection/internal/proxy"
+	"k10webprotection/internal/tray"
 )
 
 // ── Types exposed to frontend ─────────────────────────────────────────────────
@@ -107,10 +108,10 @@ type FocusModeStatus struct {
 }
 
 type DisableDelayStatus struct {
-	DelayHours      int  `json:"delayHours"`
-	RequestPending  bool `json:"requestPending"`
-	ReadyToDisable  bool `json:"readyToDisable"`
-	RemainingSeconds int `json:"remainingSeconds"`
+	DelayHours       int  `json:"delayHours"`
+	RequestPending   bool `json:"requestPending"`
+	ReadyToDisable   bool `json:"readyToDisable"`
+	RemainingSeconds int  `json:"remainingSeconds"`
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -153,6 +154,16 @@ func (a *App) conf() *config.Config { return a.cur.Load().cfg }
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	registerShutdownObserver()
+	tray.Run(ctx, func() {
+		wailsruntime.WindowShow(a.ctx)
+		wailsruntime.WindowUnminimise(a.ctx)
+	}, func() {
+		// the quit modal lives in the same window; it must be shown before the event reaches it
+		wailsruntime.WindowShow(a.ctx)
+		wailsruntime.WindowUnminimise(a.ctx)
+		wailsruntime.EventsEmit(a.ctx, "quit-requested")
+	})
+
 	a.proxy = proxy.New(a.conf().PolicyView().ProxyPort, a.onBlock)
 	a.applier = enforce.New(a.conf(), a.proxy, enforce.HostsFunc(hosts.Apply), a.protectionOn)
 	a.applier.Enforce() // policy in place before the proxy listens
@@ -172,6 +183,7 @@ func (a *App) startup(ctx context.Context) {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
 		for range sigs {
+			tray.Stop()
 			a.sysProxy(false)
 			a.proxy.Stop()
 			atomic.StoreInt32(&a.proxyRunning, 0)
@@ -182,6 +194,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(_ context.Context) {
+	tray.Stop()
 	a.sysProxy(false)
 	a.proxy.Stop()
 	a.flushStats()
@@ -735,6 +748,7 @@ Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyConti
 
 	go func() {
 		time.Sleep(400 * time.Millisecond)
+		atomic.StoreInt32(&a.quitAuth, 1)
 		wailsruntime.Quit(a.ctx)
 	}()
 	return nil

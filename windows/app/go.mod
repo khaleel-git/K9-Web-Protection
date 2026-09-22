@@ -3,6 +3,7 @@ module k10webprotection
 go 1.22.0
 
 require (
+	github.com/energye/systray v1.0.3
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/crypto v0.33.0
 	golang.org/x/net v0.35.0

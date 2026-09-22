@@ -4,6 +4,8 @@
   "nav.status.inactive": "לא פעיל",
   "nav.logout": "התנתקות",
   "nav.logout.title": "השבתת ההגנה",
+  "nav.exit": "יציאה",
+  "nav.exit.title": "יציאה מ-K10 Web Protection",
   "nav.tab.home": "בית",
   "nav.tab.reports": "פעילות אינטרנט",
   "nav.tab.setup": "הגדרות",

@@ -134,6 +134,10 @@ var catalog = map[string]map[string]string{
 		"profile.organization":  "K10 Web Protection",
 		"profile.displayName":   "K10 Web Protection Certificate",
 		"profile.description":   "Installs the K10 Web Protection CA so HTTPS block pages display correctly in all browsers.",
+
+		// ── System tray ────────────────────────────────────────────────────
+		"tray.open": "Open K10 Web Protection",
+		"tray.exit": "Exit",
 	},
 
 	"he": {
@@ -199,5 +203,9 @@ var catalog = map[string]map[string]string{
 		"profile.organization":  "K10 Web Protection",
 		"profile.displayName":   "תעודת K10 Web Protection",
 		"profile.description":   "מתקין את רשות האישורים (CA) של K10 Web Protection כדי שדפי חסימת HTTPS יוצגו כראוי בכל הדפדפנים.",
+
+		// ── System tray ────────────────────────────────────────────────────
+		"tray.open": "פתח את K10 Web Protection",
+		"tray.exit": "יציאה",
 	},
 }

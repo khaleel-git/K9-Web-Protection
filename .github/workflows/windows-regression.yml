@@ -1,0 +1,40 @@
+name: Windows regression tests
+
+on:
+  push:
+    branches: [master, fix/windows-disable-hosts-cleanup]
+    paths:
+      - 'windows/app/**'
+      - '.github/workflows/windows-regression.yml'
+  pull_request:
+    paths:
+      - 'windows/app/**'
+      - '.github/workflows/windows-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: windows/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build embedded frontend
+        working-directory: windows/app/frontend
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run build
+      - name: Run Go regression suite
+        run: go test -mod=mod -count=1 ./...

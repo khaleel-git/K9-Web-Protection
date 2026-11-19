@@ -5,14 +5,18 @@ Category-based blocklist source data, compiled into the embedded Go database.
 ## Quick Start
 
 ```bash
-# 1. Fetch latest from all upstream sources (requires internet)
+# 1. Fetch the pinned BlockerFlow pornography + proxy-avoidance lists (requires internet)
+python3 lists/fetch_blockerflow.py --no-build
+
+# 2. Fetch latest from the other upstream sources (requires internet)
 python3 lists/sync.py --no-build
 
-# 2. Compile into the embedded database (default level)
-python3 lists/build.py --level default
+# 3. Compile into the embedded database; writes the same four JSON files to both apps
+python3 lists/build.py
 
-# 3. Rebuild the Go binary to embed the new data
+# 4. Rebuild the Go binaries to embed the new data
 cd mac/app && go build ./...
+cd windows/app && go build ./...
 ```
 
 ---
@@ -36,8 +40,13 @@ lists/
     high.json
     monitor.json
     custom.json
-  sync.py              ← fetches from upstream sources → updates categories/
-  build.py             ← compiles categories/ → mac/app/internal/database/
+  blockerflow-lists.version  ← pinned version of BlockerFlow's public lists
+  blockerflow_public_key.pem ← key that verifies the signed manifest
+  fetch_blockerflow.py ← fetches pornography + proxy-avoidance from the pinned public repo
+  sync.py              ← fetches the other upstream sources → updates categories/
+  build.py             ← compiles categories/ → mac/app/internal/database/ AND
+                         windows/app/internal/database/ (identical JSON in both)
+  tests/               ← unittest suite for the tooling (python3 -m unittest discover -s lists/tests)
   README.md            ← this file
 ```
 
@@ -45,27 +54,26 @@ lists/
 
 ## Levels
 
-| Level    | Description                                             | Embedded domains |
-|----------|---------------------------------------------------------|-----------------|
-| **High**     | All default + chat, newsgroups, social, alcohol, etc.  | ~210k            |
-| **Default**  | Adult content, security threats, illegal, sexually-related | **~200k**   |
-| **Moderate** | Adult content, security threats, illegal activity      | ~185k            |
-| **Minimal**  | Pornography and security threats only                  | ~160k            |
-| **Monitor**  | Allows all, logs traffic only (no blocking)           | 0                |
-| **Custom**   | User-selected categories (stored in app config)        |, |
+| Level    | Description                                             |
+|----------|---------------------------------------------------------|
+| **High**     | All default + chat, newsgroups, social, alcohol, etc.  |
+| **Default**  | Adult content, security threats, illegal, sexually-related |
+| **Moderate** | Adult content, security threats, illegal activity      |
+| **Minimal**  | Pornography and security threats only                  |
+| **Monitor**  | Allows all, logs traffic only (no blocking)           |
+| **Custom**   | User-selected categories (stored in app config)        |
+
+Domain totals per category come from `python3 lists/build.py --stats`. Both apps embed the same
+database, and the Windows filter level blocks every category its level lists.
 
 ---
 
 ## Sources (actively maintained)
 
 ### Pornography: `categories/pornography/`
-| Source | Notes | Domains |
-|--------|-------|---------|
-| [Block List Project, porn](https://github.com/blocklistproject/Lists) | CI/CD updated, ~500k entries | 500k |
-| [StevenBlack/hosts, porn-only](https://github.com/StevenBlack/hosts) | Widely used consolidated list | 77k |
-| [OISD NSFW](https://oisd.nl) | Zero false-positives focus, updated hourly | 299k |
-| UT1 adult | Université Toulouse 1 adult URLs | 1k |
-| **Embedded (capped at 100k)** | Priority order: BLP → StevenBlack → OISD → UT1 | **100k** |
+Comes from BlockerFlow's public lists, not from K9's own syncing. See
+[BlockerFlow lists: pornography and proxy-avoidance](#blockerflow-lists-pornography-and-proxy-avoidance).
+About 880k domains; page keywords in `keywords.txt` are curated here and unchanged.
 
 ### Malware / Spyware: `categories/malware-spyware/`
 | Source | Notes | Domains |
@@ -93,12 +101,9 @@ lists/
 | **Embedded (capped at 20k)** | | **20k** |
 
 ### Proxy Avoidance: `categories/proxy-avoidance/`
-| Source | Notes | Domains |
-|--------|-------|---------|
-| [HaGeZi, DoH bypass](https://github.com/hagezi/dns-blocklists) | Encrypted DNS bypass | 3.9k |
-| [UT1, DoH](https://github.com/olbat/ut1-blacklists) | | 3k |
-| [UT1, VPN](https://github.com/olbat/ut1-blacklists) | | 6k |
-| **Embedded (capped at 9k)** | | **9k** |
+Comes from BlockerFlow's public web-proxy list (about 19k domains). It no longer includes
+DNS-over-HTTPS resolvers or VPN hosts. See
+[BlockerFlow lists](#blockerflow-lists-pornography-and-proxy-avoidance).
 
 ### Other Categories (UT1 + curated)
 | Category | Source | Embedded |
@@ -129,17 +134,47 @@ lists/
 
 ---
 
+## BlockerFlow lists: pornography and proxy-avoidance
+
+`categories/pornography/domains.txt` and `categories/proxy-avoidance/domains.txt` are generated
+from a pinned, signed version of the public repo
+[khaleel-git/blockerflow-lists](https://github.com/khaleel-git/blockerflow-lists). Do not edit
+them by hand and do not expect `sync.py` to change them: `sync.py` no longer touches either
+category.
+
+`fetch_blockerflow.py` reads the pin from `lists/blockerflow-lists.version`, verifies the repo's
+signed `manifest.json` against `lists/blockerflow_public_key.pem`, checks every file against its
+signed size and sha256, and only then writes the two category files.
+
+```bash
+python3 lists/fetch_blockerflow.py             # fetch the pinned version, write, run build.py
+python3 lists/fetch_blockerflow.py --check     # write nothing; exit 1 if the files differ from the pin
+python3 lists/fetch_blockerflow.py --no-build  # skip build.py
+python3 lists/fetch_blockerflow.py --latest    # use the newest vYYYYMMDD.N tag and update the pin
+```
+
+To bump to a newer BlockerFlow release:
+
+1. `python3 lists/fetch_blockerflow.py --latest` (updates the pin, the two category files, and
+   runs `build.py`).
+2. Commit the pin (`lists/blockerflow-lists.version`), the category files, and the regenerated
+   JSON in both `mac/app/internal/database/` and `windows/app/internal/database/`.
+
+CI (`.github/workflows/lists-check.yml`) runs the tooling tests, runs `--check`, and verifies
+the Mac and Windows JSON files are identical.
+
+---
+
 ## build.py: Compile Categories into Database
 
 ```bash
-python3 lists/build.py                    # default level
-python3 lists/build.py --level high       # high level
-python3 lists/build.py --level all        # build all levels
-python3 lists/build.py --stats            # print per-category file vs embedded counts
+python3 lists/build.py                    # build once; copy the four JSON files to both apps
+python3 lists/build.py --stats            # print per-category counts
 ```
 
-**Binary size**: ~15 MB (with 200k embedded domains for default level).
-Full source files in `categories/` are not size-limited and total ~1M+ domains.
+Writes `domains.json`, `urls.json`, `url-patterns.json` and `multi-words.json` to both
+`mac/app/internal/database/` and `windows/app/internal/database/`. Source files in
+`categories/` are not size-limited.
 
 ---
 
@@ -151,7 +186,9 @@ python3 lists/sync.py --no-build          # fetch only, skip rebuild
 python3 lists/sync.py --category phishing # refresh one category only
 ```
 
-Overwrites category `domains.txt` files with fresh data. Does not touch `keywords.txt` (those are curated).
+Overwrites category `domains.txt` files with fresh data, except `pornography` and
+`proxy-avoidance`, which come from BlockerFlow's lists (see above). Does not touch `keywords.txt`
+(those are curated).
 
 ---
 
@@ -165,3 +202,4 @@ Overwrites category `domains.txt` files with fresh data. Does not touch `keyword
 | HaGeZi DNS Blocklists | MIT | https://github.com/hagezi/dns-blocklists |
 | URLhaus |, | https://urlhaus.abuse.ch |
 | UT1 Blacklists | CC-BY-SA 4.0 | https://github.com/olbat/ut1-blacklists |
+| BlockerFlow lists (pornography, proxy-avoidance) | see repo | https://github.com/khaleel-git/blockerflow-lists |

@@ -192,8 +192,8 @@ python3 lists/sync.py --category phishing # refresh one category only
 
 Overwrites category `domains.txt` files with fresh data, except `pornography` and
 `proxy-avoidance`, which come from BlockerFlow's lists (see above). `urls.txt` and `keywords.txt`
-are only merged into, never overwritten; the only such source today is UT1 adult for
-`pornography/`.
+are only merged into, never overwritten: UT1 adult URLs and keywords for `pornography/`, and
+UT1 URLs for `phishing/` and `hacking/`.
 
 ---
 

@@ -34,6 +34,10 @@ jobs:
         run: python3 -m unittest discover -s lists/tests
       - name: Check categories match the pinned BlockerFlow lists
         run: python3 lists/fetch_blockerflow.py --check
+      - name: Check the embedded databases match their sources
+        run: |
+          python3 lists/build.py --level default
+          git diff --exit-code -- mac/app/internal/database windows/app/internal/database
       - name: Check Mac and Windows databases are identical
         run: |
           for f in domains.json urls.json url-patterns.json multi-words.json; do

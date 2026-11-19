@@ -39,3 +39,12 @@ func TestDomainsJSONIsCategoryKeyed(t *testing.T) {
 		}
 	}
 }
+
+func TestEmbeddedKeywordsKeepCommonTerms(t *testing.T) {
+	if n := DB.KeywordCount(); n < 10_000 {
+		t.Errorf("KeywordCount() = %d, want >= 10000", n)
+	}
+	if !DB.BlocksKeyword("http://example.com/porn") {
+		t.Error("BlocksKeyword(\"http://example.com/porn\") = false, want true")
+	}
+}

@@ -4,17 +4,19 @@ K9 Web Protection — blocklist sync script.
 
 Fetches the latest data from actively maintained upstream sources:
   - Block List Project   (github.com/blocklistproject/Lists)
-  - StevenBlack/hosts   (github.com/StevenBlack/hosts)
-  - OISD NSFW           (oisd.nl)
   - HaGeZi              (github.com/hagezi/dns-blocklists)
+  - UT1 blacklists       (github.com/olbat/ut1-blacklists)
   - URLhaus              (urlhaus.abuse.ch)
+
+Pornography and proxy-avoidance domains are not fetched here; they come from
+lists/fetch_blockerflow.py.
 
 Run this to refresh category files, then run build.py to recompile the DB.
 
 Usage:
   python3 lists/sync.py                   # fetch all, then build default level
   python3 lists/sync.py --no-build        # fetch only, skip build step
-  python3 lists/sync.py --category porn   # fetch only the porn category
+  python3 lists/sync.py --category gambling   # fetch only the gambling category
 """
 
 import argparse
@@ -137,8 +139,6 @@ def overwrite(category: str, filename: str, items: list[str]):
 # ── source definitions ─────────────────────────────────────────────────────────
 
 BLP  = "https://raw.githubusercontent.com/blocklistproject/Lists/main"
-SB   = "https://raw.githubusercontent.com/StevenBlack/hosts/master"
-OISD = "https://nsfw.oisd.nl"
 HGZ  = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains"
 UT1  = "https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists"
 URLH = "https://urlhaus.abuse.ch/downloads/hostfile"
@@ -303,7 +303,7 @@ def main():
         print("\nRebuilding default-level database …")
         build_script = os.path.join(BASE_DIR, "build.py")
         subprocess.run([sys.executable, build_script, "--level", "default"], check=True)
-        print("Done. Re-run 'go build' in mac/app/ to embed the updated lists.")
+        print("Done. Re-run 'go build' in mac/app/ and windows/app/ to embed the updated lists.")
     else:
         print("\nSkipped build. Run: python3 lists/build.py --level default")
 

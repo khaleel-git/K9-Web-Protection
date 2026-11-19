@@ -19,8 +19,10 @@ Output files (written to both app database directories):
   url-patterns.json  { "pornography": ["porn", "xxx", ...], ... }
   multi-words.json   { "a": ["a phrase", ...], "b": [...], ... }  (alpha-keyed)
 
-Per-category caps keep the embedded binary to ~10 MB.
-Full source files live in lists/categories/ and are updated by sync.py.
+Pornography and proxy-avoidance domains come from lists/fetch_blockerflow.py;
+the other categories are refreshed by sync.py. Source files live in
+lists/categories/. Per-category caps on a few large categories keep the
+embedded database (about 22 MB of domains.json) from growing unbounded.
 """
 
 import argparse
@@ -44,16 +46,21 @@ KEYWORD_LIMIT = 20_000
 # Per-category cap so alphabetically-first categories (pornography) can't exhaust
 # the global budget before later categories contribute any keywords.
 PER_CAT_KEYWORD_CAP = 3_000
+# Pornography keeps every keyword (its keywords.txt is alphabetical, so a cap
+# would drop common terms like "porn" and "xxx"). The total still fits in
+# KEYWORD_LIMIT.
+KEYWORD_CAP_OVERRIDES = {"pornography": 0}  # 0 = no cap
 
 # Per-category domain caps for the embedded binary.
 # Full source files are kept in categories/ with no cap.
-# Priority: Block List Project > StevenBlack > OISD > UT1 (sync.py fetches in this order)
+# pornography and proxy-avoidance come from lists/fetch_blockerflow.py; the rest
+# from sync.py.
 CATEGORY_CAPS: dict[str, int] = {
-    "pornography":                  0,  # no cap — full 790k list for maximum coverage
+    "pornography":                  0,  # no cap — full BlockerFlow list (~880k) for maximum coverage
     "malware-spyware":         50_000,
     "phishing":                50_000,
     "gambling":                     0,  # no cap — 34k, small enough
-    "proxy-avoidance":              0,  # no cap — 11k, small enough
+    "proxy-avoidance":              0,  # no cap — BlockerFlow list (~19k), small enough
     "personals-dating":             0,  # no cap — 6.5k, small enough
     "hacking":                      0,  # no cap — 1.8k, small enough
     # Small categories — embed all
@@ -138,8 +145,9 @@ def load_keywords(categories: list[str]) -> list[str]:
                 if kw not in seen:
                     seen.add(kw)
                     cat_kws.append(kw)
-        if len(cat_kws) > PER_CAT_KEYWORD_CAP:
-            cat_kws = cat_kws[:PER_CAT_KEYWORD_CAP]
+        kw_cap = KEYWORD_CAP_OVERRIDES.get(cat, PER_CAT_KEYWORD_CAP)
+        if kw_cap and len(cat_kws) > kw_cap:
+            cat_kws = cat_kws[:kw_cap]
         keywords.extend(cat_kws)
     if len(keywords) > KEYWORD_LIMIT:
         print(f"  WARNING: keyword total {len(keywords):,} exceeds cap {KEYWORD_LIMIT:,} — truncating")
@@ -317,4 +325,4 @@ if __name__ == "__main__":
         sys.exit(0)
 
     build(args.level)  # --level all previously looped 5x but level is ignored; one pass suffices
-    print("\nDone. Re-run 'go build' in mac/app/ to embed updated lists.")
+    print("\nDone. Re-run 'go build' in mac/app/ and windows/app/ to embed updated lists.")

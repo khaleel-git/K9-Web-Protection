@@ -51,6 +51,13 @@ PER_CAT_KEYWORD_CAP = 3_000
 # KEYWORD_LIMIT.
 KEYWORD_CAP_OVERRIDES = {"pornography": 0}  # 0 = no cap
 
+# Categories whose domain entries are embedded exactly as BlockerFlow ships them (lowercased only).
+# build_category_db strips "https://", "http://" and "www." from every other category. K9's
+# matchInSet also blocks subdomains, so stripping "www." from a BlockerFlow entry would widen it:
+# "www.b-cdn.net" would become "b-cdn.net" and block every BunnyCDN pull zone. BlockerFlow's own
+# engine does not strip "www.".
+KEEP_AS_SHIPPED = {"pornography", "proxy-avoidance"}
+
 # Per-category domain caps for the embedded binary.
 # Full source files are kept in categories/ with no cap.
 # pornography and proxy-avoidance come from lists/fetch_blockerflow.py; the rest
@@ -178,10 +185,11 @@ def build_category_db(dest_dir: str):
                 d = line.strip().lower()
                 if not d or d.startswith("#"):
                     continue
-                for pfx in ("https://", "http://", "www."):
-                    if d.startswith(pfx):
-                        d = d[len(pfx):]
-                d = d.rstrip("/")
+                if cat not in KEEP_AS_SHIPPED:
+                    for pfx in ("https://", "http://", "www."):
+                        if d.startswith(pfx):
+                            d = d[len(pfx):]
+                    d = d.rstrip("/")
                 if d and d not in seen:
                     seen.add(d)
                     domains.append(d)

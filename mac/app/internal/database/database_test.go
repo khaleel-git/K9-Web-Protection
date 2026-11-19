@@ -48,3 +48,15 @@ func TestEmbeddedKeywordsKeepCommonTerms(t *testing.T) {
 		t.Error("BlocksKeyword(\"http://example.com/porn\") = false, want true")
 	}
 }
+
+// BlockerFlow ships "www.b-cdn.net" (one site) but not "b-cdn.net" (every BunnyCDN pull zone). K9
+// keeps pornography and proxy-avoidance entries exactly as shipped, so the www. prefix is not
+// stripped, which would widen the entry to the whole parent domain and its subdomains.
+func TestPornographyKeepsWwwEntriesAsShipped(t *testing.T) {
+	if DB.BlocksDomainInCategories("x.b-cdn.net", []string{"pornography"}) {
+		t.Error("x.b-cdn.net is blocked in pornography: the www. entry was widened to b-cdn.net")
+	}
+	if !DB.BlocksDomainInCategories("www.b-cdn.net", []string{"pornography"}) {
+		t.Error("www.b-cdn.net is not blocked in pornography, want blocked")
+	}
+}

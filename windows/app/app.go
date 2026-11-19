@@ -129,6 +129,8 @@ type App struct {
 	reloadMu     sync.Mutex
 	quitAuth     int32 // 1 = quit authorised; lets OnBeforeClose pass through
 
+	protectionMu sync.Mutex // serializes startup, Enable and Disable
+
 	statsMu    sync.Mutex
 	statsTimer *time.Timer
 }
@@ -173,6 +175,8 @@ func (a *App) startup(ctx context.Context) {
 	a.sysProxy(false)
 	if a.conf().AutoStart {
 		go func() {
+			a.protectionMu.Lock()
+			defer a.protectionMu.Unlock()
 			if err := a.startProxyAndWait(); err == nil {
 				a.sysProxy(true)
 				a.applier.Enforce()
@@ -311,6 +315,9 @@ func (a *App) RetryHosts() ApplyView { return applyView(a.applier.Retry()) }
 // ── Protection on/off ─────────────────────────────────────────────────────────
 
 func (a *App) EnableProtection() error {
+	a.protectionMu.Lock()
+	defer a.protectionMu.Unlock()
+
 	if err := a.startProxyAndWait(); err != nil {
 		return err
 	}
@@ -326,6 +333,9 @@ func (a *App) EnableProtection() error {
 }
 
 func (a *App) DisableProtection(password string) error {
+	a.protectionMu.Lock()
+	defer a.protectionMu.Unlock()
+
 	if !a.verifyPassword(password) {
 		return errors.New(i18n.T("err.incorrectPassword"))
 	}
@@ -337,21 +347,19 @@ func (a *App) DisableProtection(password string) error {
 	if !allowed {
 		return errors.New(i18n.T("err.disableDelayActive", remaining.Hours()))
 	}
-	a.conf().ClearDisableRequest()
-	a.proxy.Stop()
-	atomic.StoreInt32(&a.proxyRunning, 0)
-	a.sysProxy(false)
-	var msgs []string
-	if err := a.applier.ClearHosts(); err != nil {
-		msgs = append(msgs, i18n.T("err.hostsClearFailed", hostsErrText(err)))
+	// A failed hosts cleanup must leave protection on, so the user can retry
+	// Disable without an inactive dashboard hiding the remaining blocks. Keep
+	// cleanup and the state transition under the applier lock: a concurrent
+	// rule edit must not restore hosts entries between these two steps.
+	if err := a.applier.Disable(func() {
+		a.conf().ClearDisableRequest()
+		a.proxy.Stop()
+		atomic.StoreInt32(&a.proxyRunning, 0)
+		a.sysProxy(false)
+	}); err != nil {
+		return errors.New(hostsErrText(err))
 	}
-	if err := a.saveErr(a.conf().Save()); err != nil {
-		msgs = append(msgs, err.Error())
-	}
-	if len(msgs) > 0 {
-		return errors.New(strings.Join(msgs, " · "))
-	}
-	return nil
+	return a.saveErr(a.conf().Save())
 }
 
 func (a *App) RequestDisable() error {

@@ -82,14 +82,29 @@ func (a *Applier) SetStore(s Store) {
 }
 
 // ClearHosts removes the managed hosts sections when protection is turned off.
-func (a *Applier) ClearHosts() error {
+func (a *Applier) ClearHosts() error { return a.clearHosts(nil) }
+
+// Disable clears hosts before stopping protection. stop must mark protection
+// off, and must not call back into the applier. It runs only after a successful
+// cleanup, under the same lock as Apply, so a concurrent rule edit cannot
+// restore the hosts entries before protection becomes off.
+func (a *Applier) Disable(stop func()) error { return a.clearHosts(stop) }
+
+func (a *Applier) clearHosts(stop func()) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.declined = nil
 	_, err := a.hosts.Apply(hosts.Plan{})
 	a.clearErr = err
+	if err == nil && stop != nil {
+		stop()
+	}
 	a.lastMu.Lock()
-	a.last.Hosts, a.last.HostsErr, a.last.HostsApplied, a.last.HostsSkipped = hosts.Result{}, err, false, ErrProtectionOff
+	a.last.Hosts, a.last.HostsErr, a.last.HostsApplied = hosts.Result{}, err, false
+	a.last.HostsSkipped = nil
+	if err == nil || (a.enabled != nil && !a.enabled()) {
+		a.last.HostsSkipped = ErrProtectionOff
+	}
 	a.lastMu.Unlock()
 	return err
 }

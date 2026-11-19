@@ -73,7 +73,10 @@ database, and the Windows filter level blocks every category its level lists.
 ### Pornography: `categories/pornography/`
 Comes from BlockerFlow's public lists, not from K9's own syncing. See
 [BlockerFlow lists: pornography and proxy-avoidance](#blockerflow-lists-pornography-and-proxy-avoidance).
-About 880k domains; page keywords in `keywords.txt` are curated here and unchanged.
+About 894k domains in the pinned source file, about 880k embedded after `build.py` normalises them
+(strips `www.`, dedupes); exact totals come from `python3 lists/build.py --stats`. `sync.py` still
+merges UT1 adult URLs and keywords into `pornography/urls.txt` and `keywords.txt` (merge only, it
+never overwrites them).
 
 ### Malware / Spyware: `categories/malware-spyware/`
 | Source | Notes | Domains |
@@ -139,8 +142,9 @@ DNS-over-HTTPS resolvers or VPN hosts. See
 `categories/pornography/domains.txt` and `categories/proxy-avoidance/domains.txt` are generated
 from a pinned, signed version of the public repo
 [khaleel-git/blockerflow-lists](https://github.com/khaleel-git/blockerflow-lists). Do not edit
-them by hand and do not expect `sync.py` to change them: `sync.py` no longer touches either
-category.
+them by hand. `sync.py` no longer writes `domains.txt` for these two categories. (It still merges
+UT1 adult URLs and keywords into `pornography/urls.txt` and `keywords.txt`; it only merges, it
+never overwrites them.)
 
 `fetch_blockerflow.py` reads the pin from `lists/blockerflow-lists.version`, verifies the repo's
 signed `manifest.json` against `lists/blockerflow_public_key.pem`, checks every file against its
@@ -187,8 +191,9 @@ python3 lists/sync.py --category phishing # refresh one category only
 ```
 
 Overwrites category `domains.txt` files with fresh data, except `pornography` and
-`proxy-avoidance`, which come from BlockerFlow's lists (see above). Does not touch `keywords.txt`
-(those are curated).
+`proxy-avoidance`, which come from BlockerFlow's lists (see above). `urls.txt` and `keywords.txt`
+are only merged into, never overwritten; the only such source today is UT1 adult for
+`pornography/`.
 
 ---
 
@@ -202,4 +207,5 @@ Overwrites category `domains.txt` files with fresh data, except `pornography` an
 | HaGeZi DNS Blocklists | MIT | https://github.com/hagezi/dns-blocklists |
 | URLhaus |, | https://urlhaus.abuse.ch |
 | UT1 Blacklists | CC-BY-SA 4.0 | https://github.com/olbat/ut1-blacklists |
-| BlockerFlow lists (pornography, proxy-avoidance) | see repo | https://github.com/khaleel-git/blockerflow-lists |
+| BlockerFlow lists: pornography | GPL-3.0 | https://github.com/khaleel-git/blockerflow-lists |
+| BlockerFlow lists: web-proxy (proxy-avoidance) | CC BY-SA 4.0 | https://github.com/khaleel-git/blockerflow-lists |

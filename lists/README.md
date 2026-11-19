@@ -154,18 +154,25 @@ signed size and sha256, and only then writes the two category files.
 python3 lists/fetch_blockerflow.py             # fetch the pinned version, write, run build.py
 python3 lists/fetch_blockerflow.py --check     # write nothing; exit 1 if the files differ from the pin
 python3 lists/fetch_blockerflow.py --no-build  # skip build.py
-python3 lists/fetch_blockerflow.py --latest    # use the newest vYYYYMMDD.N tag and update the pin
+python3 lists/fetch_blockerflow.py --latest    # use the version signed on main and update the pin
 ```
 
 To bump to a newer BlockerFlow release:
 
-1. `python3 lists/fetch_blockerflow.py --latest` (updates the pin, the two category files, and
-   runs `build.py`).
+1. `python3 lists/fetch_blockerflow.py --latest`. It reads `manifest.json` on the public repo's
+   `main` branch, verifies its signature with the pinned key, and takes the signed `version` as the
+   new pin. It does not look at tags: after a rollback, `main` holds the older lists while the
+   newer tag still exists, and `main` is what counts. It then fetches and verifies that version's
+   tag in full, and only then updates the pin and the two category files and runs `build.py`.
 2. Commit the pin (`lists/blockerflow-lists.version`), the category files, and the regenerated
    JSON in both `mac/app/internal/database/` and `windows/app/internal/database/`.
 
-CI (`.github/workflows/lists-check.yml`) runs the tooling tests, runs `--check`, and verifies
-the Mac and Windows JSON files are identical.
+CI (`.github/workflows/lists-check.yml`) runs the tooling tests, runs `--check`, rebuilds the
+database with `build.py --level default` and fails if the committed JSON in
+`mac/app/internal/database/` or `windows/app/internal/database/` differs from the rebuild (so the
+embedded data always matches `categories/`), and verifies the Mac and Windows JSON files are identical.
+
+The licence texts and notices for this data are in [`blockerflow-lists/`](blockerflow-lists/README.md).
 
 ---
 
@@ -179,6 +186,11 @@ python3 lists/build.py --stats            # print per-category counts
 Writes `domains.json`, `urls.json`, `url-patterns.json` and `multi-words.json` to both
 `mac/app/internal/database/` and `windows/app/internal/database/`. Source files in
 `categories/` are not size-limited.
+
+For every category except `pornography` and `proxy-avoidance`, `build.py` strips `https://`,
+`http://` and `www.` from each domain. Those two categories (`KEEP_AS_SHIPPED` in `build.py`) are
+embedded exactly as BlockerFlow ships them, lowercased: the apps also block subdomains of an entry,
+so stripping `www.` would widen `www.b-cdn.net` to every host under `b-cdn.net`.
 
 ---
 
@@ -203,8 +215,8 @@ UT1 URLs for `phishing/` and `hacking/`.
 |---------|---------|-----|
 | Block List Project | Unlicense | https://github.com/blocklistproject/Lists |
 | StevenBlack/hosts | MIT | https://github.com/StevenBlack/hosts |
-| OISD | CC0 | https://oisd.nl |
-| HaGeZi DNS Blocklists | MIT | https://github.com/hagezi/dns-blocklists |
+| OISD | GPL-3.0 | https://oisd.nl |
+| HaGeZi DNS Blocklists | GPL-3.0 | https://github.com/hagezi/dns-blocklists |
 | URLhaus |, | https://urlhaus.abuse.ch |
 | UT1 Blacklists | CC-BY-SA 4.0 | https://github.com/olbat/ut1-blacklists |
 | BlockerFlow lists: pornography | GPL-3.0 | https://github.com/khaleel-git/blockerflow-lists |

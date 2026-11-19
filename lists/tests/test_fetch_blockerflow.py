@@ -1,11 +1,13 @@
 import base64
 import hashlib
+import http.client
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import fetch_blockerflow as fb  # noqa: E402
@@ -112,8 +114,23 @@ class TestFetchBlockerflow(unittest.TestCase):
     def test_write_categories_header_and_lines(self):
         fb.write_categories(VERSION, {"pornography": ["a.example", "b.example"], "proxy-avoidance": ["p.example"]})
         with open(os.path.join(self.cat_dir, "pornography", "domains.txt")) as f:
-            self.assertEqual(f.read(), "# From blockerflow-lists v20261105.8. Do not edit; "
+            self.assertEqual(f.read(), "# From blockerflow-lists v20261105.8 (GPL-3.0, see "
+                                       "lists/blockerflow-lists/LICENSE). Do not edit; "
                                        "run lists/fetch_blockerflow.py\na.example\nb.example\n")
+        with open(os.path.join(self.cat_dir, "proxy-avoidance", "domains.txt")) as f:
+            self.assertEqual(f.read(), "# From blockerflow-lists v20261105.8 (CC BY-SA 4.0, see "
+                                       "lists/blockerflow-lists/CC-BY-SA-4.0.txt). Do not edit; "
+                                       "run lists/fetch_blockerflow.py\np.example\n")
+
+    def test_check_detects_a_changed_licence_header(self):
+        domains = {"pornography": ["a.example"], "proxy-avoidance": ["p.example"]}
+        fb.write_categories(VERSION, domains)
+        path = os.path.join(self.cat_dir, "pornography", "domains.txt")
+        with open(path) as f:
+            text = f.read()
+        with open(path, "w") as f:
+            f.write(text.replace("GPL-3.0", "MIT"))
+        self.assertEqual(fb.check_categories(VERSION, domains), ["pornography"])
 
     def test_check_detects_hand_edit(self):
         fx = self.fixture()
@@ -128,14 +145,89 @@ class TestFetchBlockerflow(unittest.TestCase):
         domains = {"pornography": ["a.example"], "proxy-avoidance": ["p.example"]}
         self.assertEqual(sorted(fb.check_categories(VERSION, domains)), ["pornography", "proxy-avoidance"])
 
-    def test_latest_version_picks_highest_numeric(self):
-        tags = [{"name": "v20261105.8"}, {"name": "v20261105.10"}, {"name": "v20261031.99"},
-                {"name": "latest"}, {"name": "v2026.1"}]
-        self.assertEqual(fb.latest_version(lambda url: json.dumps(tags).encode()), "20261105.10")
+    def test_latest_version_is_the_signed_manifest_on_main(self):
+        # main holds the rolled-back version A; a newer tag B may exist, and must not matter.
+        a = self.fixture(version="20261105.8")
+        asked = []
 
-    def test_latest_version_no_tags(self):
+        def read(path):
+            asked.append(path)
+            return a.read(path)
+        self.assertEqual(fb.latest_version(a.public_key, read), "20261105.8")
+        self.assertEqual(asked, ["manifest.json"])
+
+    def test_latest_version_never_asks_for_tags(self):
+        self.assertFalse(hasattr(fb, "TAGS_URL"))
+        self.assertFalse(hasattr(fb, "TAG_RE"))
+
+    def test_latest_version_bad_signature_fails(self):
+        a = self.fixture()
+        other = Fixture(tempfile.mkdtemp(dir=self.tmp))
         with self.assertRaises(fb.PackError):
-            fb.latest_version(lambda url: b"[]")
+            fb.latest_version(other.public_key, a.read)
+
+    def test_latest_version_missing_manifest_fails(self):
+        def read(path):
+            raise fb.PackError("HTTP 404")
+        with self.assertRaises(fb.PackError):
+            fb.latest_version(self.fixture().public_key, read)
+
+    def test_main_latest_reads_main_and_not_tags(self):
+        # The manifest on main says A; the tag for A is fetched; the pin becomes A.
+        a = self.fixture(version="20261105.8")
+        pin = self._patch_main(a, pin_version="20250101.1")
+        refs = []
+
+        def make_reader(from_dir, ref):
+            refs.append(ref)
+            return a.read
+        fb._make_reader = make_reader
+        self.assertEqual(fb.main(["--latest", "--no-build"]), 0)
+        self.assertEqual(refs, ["main", "v20261105.8"])
+        with open(pin) as f:
+            self.assertEqual(f.read(), "20261105.8\n")
+
+    def test_main_latest_bad_signature_on_main_writes_nothing(self):
+        good = self.fixture()
+        evil = Fixture(tempfile.mkdtemp(dir=self.tmp), version="20261106.1")  # another key
+        pin = self._patch_main(good, pin_version="20250101.1")
+        fb._make_reader = lambda from_dir, ref: (evil.read if ref == "main" else good.read)
+        self.assertEqual(fb.main(["--latest", "--no-build"]), 2)
+        self.assertFalse(os.path.exists(self.cat_dir))
+        with open(pin) as f:
+            self.assertEqual(f.read(), "20250101.1\n")
+
+    def test_main_latest_tag_that_fails_leaves_pin_alone(self):
+        a = self.fixture(version="20261105.8")
+        broken = self.fixture(tweak=lambda r: r.update({"web-proxy/domains-with-sources.txt": PROXY + b"x"}))
+        pin = self._patch_main(a, pin_version="20250101.1")
+        fb._make_reader = lambda from_dir, ref: (a.read if ref == "main" else broken.read)
+        self.assertEqual(fb.main(["--latest", "--no-build"]), 2)
+        self.assertFalse(os.path.exists(self.cat_dir))
+        with open(pin) as f:
+            self.assertEqual(f.read(), "20250101.1\n")
+
+    def test_http_get_wraps_incomplete_read(self):
+        class Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                raise http.client.IncompleteRead(b"par", 10)
+        with mock.patch.object(fb.urllib.request, "urlopen", lambda *a, **k: Resp()):
+            with self.assertRaises(fb.PackError):
+                fb._http_get("https://example.invalid/x")
+
+    def test_main_short_read_exits_with_the_pack_error_code(self):
+        self._patch_main(self.fixture())
+
+        def short(path):
+            raise fb.PackError("https://example.invalid/x: IncompleteRead(3 bytes read, 7 more expected)")
+        fb._make_reader = lambda from_dir, ref: short
+        self.assertEqual(fb.main(["--no-build"]), 2)
 
     def _patch_main(self, fx, pin_version=VERSION):
         pin = os.path.join(self.tmp, "pin")
@@ -145,8 +237,7 @@ class TestFetchBlockerflow(unittest.TestCase):
         with open(keyfile, "w") as f:
             f.write(fx.public_key)
         for name, value in (("PIN_PATH", pin), ("KEY_PATH", keyfile),
-                            ("_make_reader", lambda a, v: fx.read),
-                            ("latest_version", lambda: VERSION)):
+                            ("_make_reader", lambda from_dir, ref: fx.read)):
             self.addCleanup(setattr, fb, name, getattr(fb, name))
             setattr(fb, name, value)
         return pin

@@ -9,15 +9,16 @@ shipped file against its signed size and sha256, before anything is written.
 
 Usage:
   python3 lists/fetch_blockerflow.py                  # fetch the pinned version, write, run build.py
-  python3 lists/fetch_blockerflow.py --latest         # use the newest vYYYYMMDD.N tag and update the pin
+  python3 lists/fetch_blockerflow.py --latest         # use the version signed on main and update the pin
   python3 lists/fetch_blockerflow.py --check          # write nothing; exit 1 if the files differ
   python3 lists/fetch_blockerflow.py --no-build       # skip build.py
-  python3 lists/fetch_blockerflow.py --from-dir PATH  # read the tag from a local clone (git show)
+  python3 lists/fetch_blockerflow.py --from-dir PATH  # read the tag (and main, for --latest) from a local clone (git show)
 """
 
 import argparse
 import base64
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -33,19 +34,24 @@ PIN_PATH = os.path.join(BASE_DIR, "blockerflow-lists.version")
 KEY_PATH = os.path.join(BASE_DIR, "blockerflow_public_key.pem")
 
 REPO = "khaleel-git/blockerflow-lists"
-RAW_URL = "https://raw.githubusercontent.com/" + REPO + "/v{version}/{path}"
-TAGS_URL = "https://api.github.com/repos/" + REPO + "/tags"
+RAW_URL = "https://raw.githubusercontent.com/" + REPO + "/{ref}/{path}"
 USER_AGENT = "k9-blockerflow-lists/1.0"
 HTTP_TIMEOUT = 60
 OPENSSL_TIMEOUT = 30
 VERSION_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]*")
-TAG_RE = re.compile(r"v(\d{8})\.(\d+)")
 
 # manifest path -> (path in the public repo, K9 category). The manifest names the shipped files
 # (domain|source_mask rows); in the public repo those are domains-with-sources.txt.
 MAPPING = {
     "pornography/domains.txt": ("pornography/domains-with-sources.txt", "pornography"),
     "web-proxy/domains.txt": ("web-proxy/domains-with-sources.txt", "proxy-avoidance"),
+}
+
+# K9 category -> (licence name, licence text file in lists/blockerflow-lists/). Named in the header of
+# each generated category file, because those files carry the licensed data.
+LICENCES = {
+    "pornography": ("GPL-3.0", "LICENSE"),
+    "proxy-avoidance": ("CC BY-SA 4.0", "CC-BY-SA-4.0.txt"),
 }
 
 
@@ -74,6 +80,7 @@ def _check_payload(payload):
             raise PackError(f"malformed manifest: {f['path']} needs an integer size and a sha256")
 
 
+# Duplicated in blockerflow/shared/blocklists/public_repo.py (verify_manifest); keep both in step.
 def verify_manifest(manifest_text, public_key_pem):
     """Check the manifest's ECDSA P-256/SHA-256 signature and return the payload dict."""
     try:
@@ -106,6 +113,7 @@ def verify_manifest(manifest_text, public_key_pem):
     return payload
 
 
+# Duplicated in blockerflow/shared/blocklists/public_repo.py (strip_masks); keep both in step.
 def strip_masks(data):
     """`domain|source_mask` rows to a sorted, de-duplicated, lowercase list of domains."""
     domains = set()
@@ -150,12 +158,14 @@ def load_pack(version, read, public_key_pem):
     return domains
 
 
-def _header(version):
-    return f"# From blockerflow-lists v{version}. Do not edit; run lists/fetch_blockerflow.py\n"
+def _header(version, category):
+    name, text = LICENCES[category]
+    return (f"# From blockerflow-lists v{version} ({name}, see lists/blockerflow-lists/{text}). "
+            "Do not edit; run lists/fetch_blockerflow.py\n")
 
 
-def _render(version, category_domains):
-    return (_header(version) + "".join(d + "\n" for d in category_domains)).encode("utf-8")
+def _render(version, category, category_domains):
+    return (_header(version, category) + "".join(d + "\n" for d in category_domains)).encode("utf-8")
 
 
 def _cat_file(category):
@@ -168,7 +178,7 @@ def write_categories(version, domains):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         tmp = dest + ".tmp"
         with open(tmp, "wb") as f:
-            f.write(_render(version, items))
+            f.write(_render(version, category, items))
         os.replace(tmp, dest)
 
 
@@ -178,7 +188,7 @@ def check_categories(version, domains):
     for category, items in domains.items():
         try:
             with open(_cat_file(category), "rb") as f:
-                same = f.read() == _render(version, items)
+                same = f.read() == _render(version, category, items)
         except OSError:
             same = False
         if not same:
@@ -197,44 +207,42 @@ def _http_get(url):
         raise PackError(f"{url}: HTTP {e.code}")
     except urllib.error.URLError as e:
         raise PackError(f"{url}: {e.reason}")
+    except http.client.HTTPException as e:  # IncompleteRead (a short read) and friends
+        raise PackError(f"{url}: {e!r}")
     except OSError as e:
         raise PackError(f"{url}: {e}")
 
 
-def latest_version(fetch=_http_get):
-    """Highest vYYYYMMDD.N tag of the public repo, as '<YYYYMMDD>.<N>'."""
+def latest_version(public_key_pem, read=None):
+    """The version signed in main's manifest.json: what the public repo currently publishes as
+    stable. Tags are not used: a rollback leaves the newer tag in place but moves main back.
+    `read(repo_path)` gives the bytes of a file on main."""
+    read = read or _make_reader(None, "main")
     try:
-        tags = json.loads(fetch(TAGS_URL))
-        names = [t["name"] for t in tags]
-    except (ValueError, KeyError, TypeError) as e:
-        raise PackError(f"cannot read the tag list: {e}")
-    found = []
-    for name in names:
-        m = TAG_RE.fullmatch(name) if isinstance(name, str) else None
-        if m:
-            found.append(((int(m.group(1)), int(m.group(2))), name[1:]))
-    if not found:
-        raise PackError("no vYYYYMMDD.N tags found")
-    return max(found)[1]
+        manifest_text = read("manifest.json").decode("utf-8")
+    except UnicodeDecodeError:
+        raise PackError("malformed manifest on main: not valid UTF-8")
+    return verify_manifest(manifest_text, public_key_pem)["version"]
 
 
-def _make_reader(from_dir, version):
+def _make_reader(from_dir, ref):
+    """Reader of repo files at `ref` ('main' or 'v<version>'): git show in a clone, or raw.githubusercontent."""
     if from_dir:
         clone = os.path.abspath(os.path.expanduser(from_dir))
 
         def read(path):
             try:
-                r = subprocess.run(["git", "-C", clone, "show", f"v{version}:{path}"],
+                r = subprocess.run(["git", "-C", clone, "show", f"{ref}:{path}"],
                                    capture_output=True, timeout=120)
             except FileNotFoundError:
                 raise PackError("git is not installed")
             except subprocess.TimeoutExpired:
                 raise PackError(f"git show {path} timed out")
             if r.returncode != 0:
-                raise PackError(f"git show v{version}:{path} failed: {r.stderr.decode(errors='replace').strip()}")
+                raise PackError(f"git show {ref}:{path} failed: {r.stderr.decode(errors='replace').strip()}")
             return r.stdout
         return read
-    return lambda path: _http_get(RAW_URL.format(version=version, path=path))
+    return lambda path: _http_get(RAW_URL.format(ref=ref, path=path))
 
 
 def _read_pin():
@@ -250,20 +258,21 @@ def _read_pin():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Fetch K9's pornography and proxy-avoidance lists from blockerflow-lists.")
-    ap.add_argument("--latest", action="store_true", help="use the newest tag and update the pin")
+    ap.add_argument("--latest", action="store_true", help="use the version signed on main and update the pin")
     ap.add_argument("--check", action="store_true", help="write nothing; exit 1 if the category files differ")
     ap.add_argument("--no-build", action="store_true", help="do not run build.py afterwards")
     ap.add_argument("--from-dir", metavar="PATH", help="read the tag from a local clone with git show")
     args = ap.parse_args(argv)
     try:
         pinned = _read_pin()
-        version = latest_version() if args.latest else pinned
         try:
             with open(KEY_PATH) as f:
                 key = f.read()
         except OSError as e:
             raise PackError(f"cannot read the public key: {e}")
-        domains = load_pack(version, _make_reader(args.from_dir, version), key)
+        version = latest_version(key, _make_reader(args.from_dir, "main")) if args.latest else pinned
+        # The pin is only rewritten below, after this tag has loaded and verified in full.
+        domains = load_pack(version, _make_reader(args.from_dir, f"v{version}"), key)
         counts = ", ".join(f"{c}: {len(d)}" for c, d in sorted(domains.items()))
         if args.check:
             differs = check_categories(version, domains)

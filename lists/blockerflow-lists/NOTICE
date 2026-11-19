@@ -1,0 +1,187 @@
+BlockerFlow public lists
+https://github.com/khaleel-git/blockerflow-lists
+
+This repository republishes the two block lists that ship with BlockerFlow. Both are
+built from third-party sources and from BlockerFlow's own additions. This file names each
+source, its licence, where its terms are published, and which files here derive from it.
+
+Last checked: 2026-11-19.
+
+
+1. LICENCE BY FOLDER
+--------------------
+
+  pornography/    GNU General Public License v3.0 (GPL-3.0). Full text: LICENSE
+  web-proxy/      Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+                  Full text: LICENSES/CC-BY-SA-4.0.txt
+  everything else (README.md, manifest.json, blockerflow_public_key.pem, tooling):
+                  GPL-3.0, same as pornography/
+
+Why two licences:
+
+  - pornography/ combines data from sources under the Unlicense, the MIT licence and
+    GPL-3.0 (OISD and HaGeZi). The Unlicense and MIT terms allow reuse under GPL-3.0, and
+    GPL-3.0 requires the combined work to be GPL-3.0. No CC BY-SA text is copied into this
+    folder. keyword_tiers.txt only uses CC BY-SA word-frequency lists to choose a label for
+    BlockerFlow's own keywords (section 2.7), and CC BY-SA 4.0 material may be relicensed under
+    GPL-3.0 in any case.
+  - web-proxy/ is built from the UT1 "redirector" list, which is CC BY-SA 4.0. Share-alike
+    requires the derived list to stay CC BY-SA 4.0 (or a licence Creative Commons lists as
+    compatible). It contains no GPL-3.0 data, so there is nothing that forces GPL there.
+
+BlockerFlow's own work (the curated additions, the keyword files, the build) is released
+under the licence of the folder it sits in. Copyright (c) 2026 BlockerFlow (khaleel-git).
+
+
+2. SOURCES
+----------
+
+2.1 Block List Project - porn list
+    Licence:  The Unlicense (public domain dedication)
+    Terms:    https://github.com/blocklistproject/Lists/blob/master/LICENSE
+    Source:   https://github.com/blocklistproject/Lists  (porn.txt)
+    Requires: nothing (no attribution, no notice)
+    Used in:  pornography/domains.txt, pornography/domains-with-sources.txt,
+              pornography/hosts.txt, pornography/adblock.txt, and, through the brand
+              list derived from them, pornography/adult_hostname_keywords.txt (section 2.6)
+
+2.2 StevenBlack/hosts - porn extensions
+    Licence:  MIT. Copyright (c) Steven Black
+    Terms:    https://github.com/StevenBlack/hosts/blob/master/license.txt
+    Source:   https://github.com/StevenBlack/hosts
+              extensions/porn/clefspeare13/hosts
+              extensions/porn/sinfonietta/hosts
+    Requires: keep the copyright notice and the MIT permission notice with copies
+              (reproduced in section 3)
+    Used in:  the same pornography/ files as 2.1
+
+    The two extension folders are mirrors of third-party lists, each with its own MIT notice:
+      - clefspeare13: https://github.com/Clefspeare13/pornhosts
+        MIT, per the licence line in the file header that StevenBlack publishes.
+      - sinfonietta: https://github.com/Sinfonietta/hostfiles
+        MIT. Copyright (c) 2016 Sinfonietta.
+
+2.3 OISD - NSFW list
+    Licence:  GPL-3.0, as stated in the OISD FAQ
+    Terms:    https://oisd.nl/faq  (links to https://github.com/sjhgvr/oisd/blob/main/LICENSE)
+    Source:   https://nsfw.oisd.nl  (https://oisd.nl)
+    Requires: GPL-3.0 on the derived work; a copy of the licence with any redistribution
+    Used in:  the same pornography/ files as 2.1
+
+2.4 HaGeZi DNS Blocklists - NSFW list
+    Licence:  GPL-3.0, stated in the project's disclaimer
+    Terms:    https://github.com/hagezi/dns-blocklists  (README, Disclaimer; LICENSE file)
+    Source:   https://github.com/hagezi/dns-blocklists  (adblock/nsfw.txt)
+    Requires: GPL-3.0 on the derived work; a copy of the licence with any redistribution.
+              HaGeZi notes the GPL covers the lists as published there; its own upstream
+              data keeps its own terms.
+    Used in:  the same pornography/ files as 2.1
+
+2.5 UT1 Blacklists - redirector
+    Licence:  Creative Commons Attribution-ShareAlike 4.0 International
+    Terms:    https://github.com/olbat/ut1-blacklists  (README)
+              https://dsi.ut-capitole.fr/blacklists/
+              https://creativecommons.org/licenses/by-sa/4.0/
+    Source:   Universite Toulouse 1 Capitole, maintained by Fabrice Prigent
+              https://dsi.ut-capitole.fr/blacklists/
+              mirrored at https://github.com/olbat/ut1-blacklists  (blacklists/redirector)
+    Requires: attribution (this section), a link to the licence, an indication of changes
+              (below), and the same licence on the derived list
+    Used in:  web-proxy/domains.txt, web-proxy/domains-with-sources.txt,
+              web-proxy/hosts.txt, web-proxy/adblock.txt
+    Mask:     in web-proxy/domains-with-sources.txt, source mask 16 = UT1, 32 = hand-curated
+              by BlockerFlow, 48 = both
+    Changes:  BlockerFlow validated each hostname, dropped IP literals, single-label names
+              and malformed entries, removed hosts on its allowlist, added a small set of
+              hosts it curated by hand, sorted and de-duplicated the result, and rewrote it
+              in the formats published here. The source-mask number in
+              domains-with-sources.txt marks which source listed each host.
+
+2.6 BlockerFlow's own work, and files derived from the sources above
+    Every file under pornography/ other than the four domain files is listed here, with
+    where it comes from. All of them are GPL-3.0, like the rest of pornography/.
+
+    pornography/keywords.txt
+        BlockerFlow's own weighted keyword list. Not taken from any source above.
+    pornography/keywords_intl.txt
+        BlockerFlow's own multilingual adult keyword list. Not taken from any source above.
+        Wikipedia article titles were scanned to test it; none are copied into the file.
+    pornography/keyword_tiers.txt
+        Labels (strong or context) for BlockerFlow's own keywords from keywords.txt. A script
+        sets them from explicit word stems BlockerFlow chose, the adult brand roots (below), and
+        word-frequency lists (section 2.7) and words found in links on the home pages of the
+        most popular sites (a test set built from the Tranco list, section 2.8) used to find
+        common words. The file lists BlockerFlow's keywords only; nothing is copied from those
+        inputs, and no Tranco hostnames or ranks are published here.
+    pornography/adult_hostname_keywords.txt
+        Brand roots derived from the domain list: a script takes the registrable label of every
+        domain in domains.txt, keeps roots that all four sources (2.1 to 2.4) list across at least
+        20 domains, and a person reviews them. It is therefore derived from the pornography/
+        sources 2.1 to 2.4 and is GPL-3.0 on the same terms. A set of legitimate domains is used
+        only to check that no root blocks them; none of those domains are copied.
+    The few web-proxy hosts BlockerFlow added by hand are CC BY-SA 4.0, like the rest of
+    web-proxy/.
+
+2.7 FrequencyWords - word-frequency lists
+    Licence:  Content: CC BY-SA 4.0. Code: MIT.
+    Terms:    https://github.com/hermitdave/FrequencyWords  (README)
+    Source:   https://github.com/hermitdave/FrequencyWords  (content/2018; English, German,
+              French, Spanish, Italian, Portuguese, Dutch)
+    Requires: attribution, a link to the licence and the same licence for adaptations. No
+              FrequencyWords text is copied into this repository: the lists were only used to
+              decide which of BlockerFlow's own keywords are common words. CC BY-SA 4.0
+              material may be relicensed under GPL-3.0 in any case.
+    Used in:  pornography/keyword_tiers.txt (as an input to the labels, see 2.6)
+
+2.8 Tranco - top sites ranking
+    Licence:  Tranco states no licence of its own for the list and puts no limit on use or
+              redistribution on its site. It asks users to cite its paper:
+              Victor Le Pochat, Tom Van Goethem, Samaneh Tajalizadehkhoob, Maciej Korczynski and
+              Wouter Joosen. 2019. "Tranco: A Research-Oriented Top Sites Ranking Hardened Against
+              Manipulation". NDSS 2019. https://doi.org/10.14722/ndss.2019.23386
+    Terms:    https://tranco-list.eu/  (Attribution section; "Referencing the list" on each
+              list page, for example https://tranco-list.eu/list/Y83YG)
+    Source:   https://tranco-list.eu  list Y83YG (top 1 million, 2 September to 1 October 2026),
+              top 10,000 domains used to pick the home pages whose links were read
+    Requires: citation, as above. Tranco combines rankings from Cisco Umbrella (free of
+              charge), Majestic (CC BY 3.0), Farsight, the Chrome User Experience Report
+              (CC BY-SA 4.0) and Cloudflare Radar (CC BY-NC 4.0), and says those providers' terms
+              may apply to the data. No Tranco hostname or rank is published in this repository;
+              the list was only used to choose which sites' links were read as a test set for
+              the keyword labels. Anyone who needs certainty, especially for commercial use,
+              should check the provider licences above.
+    Used in:  pornography/keyword_tiers.txt (as an input to the labels, see 2.6)
+
+No UT1 "adult" data is in this repository.
+
+
+3. NOTICES TO KEEP WITH COPIES
+------------------------------
+
+MIT licence notices (section 2.2):
+
+  Copyright (c) Steven Black (StevenBlack/hosts)
+  Copyright (c) 2016 Sinfonietta (Sinfonietta/hostfiles)
+  Copyright (c) Niclas (Clefspeare13) and contributors (Clefspeare13/pornhosts)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify, merge,
+  publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+  to whom the Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or
+  substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  DEALINGS IN THE SOFTWARE.
+
+The Unlicense (section 2.1) needs no notice. GPL-3.0 and CC BY-SA 4.0 texts are in LICENSE
+and LICENSES/CC-BY-SA-4.0.txt.
+
+The lists are provided as is, without warranty. They can contain mistakes. The licences
+above govern the list data; filtering decisions made with them are the user's own.

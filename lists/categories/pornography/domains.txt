@@ -1,4 +1,4 @@
-# From blockerflow-lists v20261105.8. Do not edit; run lists/fetch_blockerflow.py
+# From blockerflow-lists v20261105.8 (GPL-3.0, see lists/blockerflow-lists/LICENSE). Do not edit; run lists/fetch_blockerflow.py
 0----q.tumblr.com
 0--liamariejohnson--0.nedrobin.net
 0-0.asia

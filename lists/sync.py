@@ -147,10 +147,6 @@ SOURCES: dict[str, list[dict]] = {
 
     # ── Pornography ────────────────────────────────────────────────────────────
     "pornography": [
-        {"type": "domains", "label": "Block List Project — porn",    "url": f"{BLP}/porn.txt",                     "parser": _parse_hosts,        "cap": 0},
-        {"type": "domains", "label": "StevenBlack — porn-only",      "url": f"{SB}/alternates/porn-only/hosts",    "parser": _parse_hosts,        "cap": 0},
-        {"type": "domains", "label": "OISD NSFW",                    "url": OISD,                                  "parser": _parse_adblock,      "cap": 0},
-        {"type": "domains", "label": "HaGeZi — NSFW",               "url": f"{HGZ}/nsfw.txt",                     "parser": _parse_plain,        "cap": 0},
         {"type": "urls",    "label": "UT1 — adult (urls)",           "url": f"{UT1}/adult/urls",                   "parser": _parse_url_patterns, "cap": 0},
         {"type": "keywords","label": "UT1 — adult (keywords)",       "url": f"{UT1}/adult/keywords",               "parser": _parse_url_patterns, "cap": 0},
     ],
@@ -183,13 +179,6 @@ SOURCES: dict[str, list[dict]] = {
         {"type": "domains", "label": "UT1 — hacking",                "url": f"{UT1}/hacking/domains",             "parser": _parse_plain,        "cap": 0},
         {"type": "domains", "label": "UT1 — warez",                  "url": f"{UT1}/warez/domains",               "parser": _parse_plain,        "cap": 0},
         {"type": "urls",    "label": "UT1 — hacking (urls)",         "url": f"{UT1}/hacking/urls",                "parser": _parse_url_patterns, "cap": 0},
-    ],
-
-    # ── Proxy Avoidance ────────────────────────────────────────────────────────
-    "proxy-avoidance": [
-        {"type": "domains", "label": "HaGeZi — DoH bypass",         "url": f"{HGZ}/doh.txt",                     "parser": _parse_plain,        "cap": 0},
-        {"type": "domains", "label": "UT1 — DoH",                   "url": f"{UT1}/doh/domains",                 "parser": _parse_plain,        "cap": 0},
-        {"type": "domains", "label": "UT1 — VPN",                   "url": f"{UT1}/vpn/domains",                 "parser": _parse_plain,        "cap": 0},
     ],
 
     # ── Personals / Dating ────────────────────────────────────────────────────
@@ -285,9 +274,10 @@ def sync_category(name: str, sources: list[dict]):
         else:
             domains.extend(items)
 
+    has_domain_sources = any(src.get("type", "domains") == "domains" for src in sources)
     if domains:
         overwrite(name, "domains.txt", domains)
-    else:
+    elif has_domain_sources:
         print(f"    WARNING: all domain sources failed for [{name}] — domains.txt unchanged")
     if urls:
         merge_into(name, "urls.txt", urls)

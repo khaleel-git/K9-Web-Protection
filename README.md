@@ -26,6 +26,12 @@ If you want protection and focus on your phone, with ongoing updates and support
 
 ---
 
+## Blocklists
+
+The pornography and proxy-avoidance lists in the Mac and Windows apps come from BlockerFlow's public lists, [khaleel-git/blockerflow-lists](https://github.com/khaleel-git/blockerflow-lists), pinned to a signed version (see [lists/README.md](lists/README.md)). Their licence terms (GPL-3.0 for pornography, CC BY-SA 4.0 for proxy-avoidance) are in [lists/blockerflow-lists/](lists/blockerflow-lists/README.md). This is a list refresh only: the repository is still not actively updated otherwise.
+
+---
+
 ## Support
 
 This project is free and open source. If it helped you, the best way to support my work is to **install [BlockerFlow](https://play.google.com/store/apps/details?id=eu.khaleel.blockerflow)** and share it with others.

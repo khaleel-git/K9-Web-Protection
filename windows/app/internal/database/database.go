@@ -31,6 +31,10 @@ type Database struct {
 
 func (d *Database) DomainCount() int { return d.totalDomains }
 
+// CategoryCount returns the number of distinct domains loaded for one category,
+// or 0 if the category is unknown.
+func (d *Database) CategoryCount(cat string) int { return len(d.catDomains[cat]) }
+
 // URLCount returns the total number of URL patterns across all categories
 // (both full-URL patterns from urls.json and keyword patterns from url-patterns.json).
 func (d *Database) URLCount() int {

@@ -1,0 +1,48 @@
+name: Lists check
+
+on:
+  push:
+    paths:
+      - 'lists/**'
+      - 'mac/app/internal/database/**'
+      - 'windows/app/internal/database/**'
+      - '.github/workflows/lists-check.yml'
+  pull_request:
+    paths:
+      - 'lists/**'
+      - 'mac/app/internal/database/**'
+      - 'windows/app/internal/database/**'
+      - '.github/workflows/lists-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lists:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+      - name: Run list tooling tests
+        run: python3 -m unittest discover -s lists/tests
+      - name: Check categories match the pinned BlockerFlow lists
+        run: python3 lists/fetch_blockerflow.py --check
+      - name: Check the embedded databases match their sources
+        run: |
+          python3 lists/build.py --level default
+          git diff --exit-code -- mac/app/internal/database windows/app/internal/database
+      - name: Check Mac and Windows databases are identical
+        run: |
+          for f in domains.json urls.json url-patterns.json multi-words.json; do
+            cmp "mac/app/internal/database/$f" "windows/app/internal/database/$f"
+          done
+      - name: Run Mac database package tests
+        working-directory: mac/app
+        run: go test -count=1 ./internal/database/

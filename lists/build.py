@@ -3,7 +3,9 @@
 K9 Web Protection — blocklist build script.
 
 Reads category domain/keyword files and level manifests, then writes
-the embedded JSON files consumed by mac/app/internal/database/.
+the embedded JSON files consumed by the Mac and Windows apps
+(mac/app/internal/database/ and windows/app/internal/database/). Both apps
+embed identical copies.
 
 Usage:
   python3 lists/build.py [--level default]   # build one level (default)
@@ -11,38 +13,61 @@ Usage:
   python3 lists/build.py --level all         # build all levels sequentially
   python3 lists/build.py --stats             # print category sizes, no build
 
-The output JSON format matches what database.go expects:
-  { "a": ["aaa.com", ...], "b": ["bbb.com", ...], ... }
+Output files (written to both app database directories):
+  domains.json       { "pornography": ["bad.com", ...], "gambling": [...], ... }
+  urls.json          { "pornography": [".xxx", "/porn/", ...], ... }
+  url-patterns.json  { "pornography": ["porn", "xxx", ...], ... }
+  multi-words.json   { "a": ["a phrase", ...], "b": [...], ... }  (alpha-keyed)
 
-Per-category caps keep the embedded binary to ~10 MB.
-Full source files live in lists/categories/ and are updated by sync.py.
+Pornography and proxy-avoidance domains come from lists/fetch_blockerflow.py;
+the other categories are refreshed by sync.py. Source files live in
+lists/categories/. Per-category caps on a few large categories keep the
+embedded database (about 22 MB of domains.json) from growing unbounded.
 """
 
 import argparse
 import json
 import os
+import shutil
 import sys
 from collections import defaultdict
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 CAT_DIR    = os.path.join(BASE_DIR, "categories")
 LEVEL_DIR  = os.path.join(BASE_DIR, "levels")
-DB_DIR     = os.path.join(BASE_DIR, "..", "mac", "app", "internal", "database")
+DB_DIRS    = [
+    os.path.join(BASE_DIR, "..", "mac", "app", "internal", "database"),
+    os.path.join(BASE_DIR, "..", "windows", "app", "internal", "database"),
+]
+
+DB_FILES = ["domains.json", "urls.json", "url-patterns.json", "multi-words.json"]
 
 KEYWORD_LIMIT = 20_000
 # Per-category cap so alphabetically-first categories (pornography) can't exhaust
 # the global budget before later categories contribute any keywords.
 PER_CAT_KEYWORD_CAP = 3_000
+# Pornography keeps every keyword (its keywords.txt is alphabetical, so a cap
+# would drop common terms like "porn" and "xxx"). The total still fits in
+# KEYWORD_LIMIT.
+KEYWORD_CAP_OVERRIDES = {"pornography": 0}  # 0 = no cap
+
+# Categories whose domain entries are embedded exactly as BlockerFlow ships them (lowercased only).
+# build_category_db strips "https://", "http://" and "www." from every other category. K9's
+# matchInSet also blocks subdomains, so stripping "www." from a BlockerFlow entry would widen it:
+# "www.b-cdn.net" would become "b-cdn.net" and block every BunnyCDN pull zone. BlockerFlow's own
+# engine does not strip "www.".
+KEEP_AS_SHIPPED = {"pornography", "proxy-avoidance"}
 
 # Per-category domain caps for the embedded binary.
 # Full source files are kept in categories/ with no cap.
-# Priority: Block List Project > StevenBlack > OISD > UT1 (sync.py fetches in this order)
+# pornography and proxy-avoidance come from lists/fetch_blockerflow.py; the rest
+# from sync.py.
 CATEGORY_CAPS: dict[str, int] = {
-    "pornography":                  0,  # no cap — full 790k list for maximum coverage
+    "pornography":                  0,  # no cap — full BlockerFlow list (~894k) for maximum coverage
     "malware-spyware":         50_000,
     "phishing":                50_000,
     "gambling":                     0,  # no cap — 34k, small enough
-    "proxy-avoidance":              0,  # no cap — 11k, small enough
+    "proxy-avoidance":              0,  # no cap — BlockerFlow list (~19k), small enough
     "personals-dating":             0,  # no cap — 6.5k, small enough
     "hacking":                      0,  # no cap — 1.8k, small enough
     # Small categories — embed all
@@ -127,8 +152,9 @@ def load_keywords(categories: list[str]) -> list[str]:
                 if kw not in seen:
                     seen.add(kw)
                     cat_kws.append(kw)
-        if len(cat_kws) > PER_CAT_KEYWORD_CAP:
-            cat_kws = cat_kws[:PER_CAT_KEYWORD_CAP]
+        kw_cap = KEYWORD_CAP_OVERRIDES.get(cat, PER_CAT_KEYWORD_CAP)
+        if kw_cap and len(cat_kws) > kw_cap:
+            cat_kws = cat_kws[:kw_cap]
         keywords.extend(cat_kws)
     if len(keywords) > KEYWORD_LIMIT:
         print(f"  WARNING: keyword total {len(keywords):,} exceeds cap {KEYWORD_LIMIT:,} — truncating")
@@ -159,10 +185,11 @@ def build_category_db(dest_dir: str):
                 d = line.strip().lower()
                 if not d or d.startswith("#"):
                     continue
-                for pfx in ("https://", "http://", "www."):
-                    if d.startswith(pfx):
-                        d = d[len(pfx):]
-                d = d.rstrip("/")
+                if cat not in KEEP_AS_SHIPPED:
+                    for pfx in ("https://", "http://", "www."):
+                        if d.startswith(pfx):
+                            d = d[len(pfx):]
+                    d = d.rstrip("/")
                 if d and d not in seen:
                     seen.add(d)
                     domains.append(d)
@@ -256,12 +283,20 @@ def write_page_keywords(dest_dir: str):
 def build(level_name: str):
     """Build all embedded database files."""
     print(f"\nNote: level '{level_name}' ignored — building full category-aware DB.")
-    build_category_db(DB_DIR)
+    # Build into the first directory, then copy the exact bytes to the rest so
+    # every app embeds an identical database.
+    first, *rest = DB_DIRS
+    build_category_db(first)
     print()
-    n_urls     = build_category_urls(DB_DIR)
-    n_patterns = build_url_patterns(DB_DIR)
+    n_urls     = build_category_urls(first)
+    n_patterns = build_url_patterns(first)
     print()
-    n_keywords = write_page_keywords(DB_DIR)
+    n_keywords = write_page_keywords(first)
+    for dest in rest:
+        os.makedirs(dest, exist_ok=True)
+        for name in DB_FILES:
+            shutil.copyfile(os.path.join(first, name), os.path.join(dest, name))
+        print(f"  Copied {len(DB_FILES)} database files to {os.path.normpath(dest)}")
     print(f"\n  Summary: {n_urls:,} url patterns | {n_patterns:,} keyword patterns | {n_keywords:,} page keywords")
 
 
@@ -298,4 +333,4 @@ if __name__ == "__main__":
         sys.exit(0)
 
     build(args.level)  # --level all previously looped 5x but level is ignored; one pass suffices
-    print("\nDone. Re-run 'go build' in mac/app/ to embed updated lists.")
+    print("\nDone. Re-run 'go build' in mac/app/ and windows/app/ to embed updated lists.")

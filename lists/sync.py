@@ -4,17 +4,19 @@ K9 Web Protection — blocklist sync script.
 
 Fetches the latest data from actively maintained upstream sources:
   - Block List Project   (github.com/blocklistproject/Lists)
-  - StevenBlack/hosts   (github.com/StevenBlack/hosts)
-  - OISD NSFW           (oisd.nl)
   - HaGeZi              (github.com/hagezi/dns-blocklists)
+  - UT1 blacklists       (github.com/olbat/ut1-blacklists)
   - URLhaus              (urlhaus.abuse.ch)
+
+Pornography and proxy-avoidance domains are not fetched here; they come from
+lists/fetch_blockerflow.py.
 
 Run this to refresh category files, then run build.py to recompile the DB.
 
 Usage:
   python3 lists/sync.py                   # fetch all, then build default level
   python3 lists/sync.py --no-build        # fetch only, skip build step
-  python3 lists/sync.py --category porn   # fetch only the porn category
+  python3 lists/sync.py --category gambling   # fetch only the gambling category
 """
 
 import argparse
@@ -137,8 +139,6 @@ def overwrite(category: str, filename: str, items: list[str]):
 # ── source definitions ─────────────────────────────────────────────────────────
 
 BLP  = "https://raw.githubusercontent.com/blocklistproject/Lists/main"
-SB   = "https://raw.githubusercontent.com/StevenBlack/hosts/master"
-OISD = "https://nsfw.oisd.nl"
 HGZ  = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains"
 UT1  = "https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists"
 URLH = "https://urlhaus.abuse.ch/downloads/hostfile"
@@ -147,10 +147,6 @@ SOURCES: dict[str, list[dict]] = {
 
     # ── Pornography ────────────────────────────────────────────────────────────
     "pornography": [
-        {"type": "domains", "label": "Block List Project — porn",    "url": f"{BLP}/porn.txt",                     "parser": _parse_hosts,        "cap": 0},
-        {"type": "domains", "label": "StevenBlack — porn-only",      "url": f"{SB}/alternates/porn-only/hosts",    "parser": _parse_hosts,        "cap": 0},
-        {"type": "domains", "label": "OISD NSFW",                    "url": OISD,                                  "parser": _parse_adblock,      "cap": 0},
-        {"type": "domains", "label": "HaGeZi — NSFW",               "url": f"{HGZ}/nsfw.txt",                     "parser": _parse_plain,        "cap": 0},
         {"type": "urls",    "label": "UT1 — adult (urls)",           "url": f"{UT1}/adult/urls",                   "parser": _parse_url_patterns, "cap": 0},
         {"type": "keywords","label": "UT1 — adult (keywords)",       "url": f"{UT1}/adult/keywords",               "parser": _parse_url_patterns, "cap": 0},
     ],
@@ -183,13 +179,6 @@ SOURCES: dict[str, list[dict]] = {
         {"type": "domains", "label": "UT1 — hacking",                "url": f"{UT1}/hacking/domains",             "parser": _parse_plain,        "cap": 0},
         {"type": "domains", "label": "UT1 — warez",                  "url": f"{UT1}/warez/domains",               "parser": _parse_plain,        "cap": 0},
         {"type": "urls",    "label": "UT1 — hacking (urls)",         "url": f"{UT1}/hacking/urls",                "parser": _parse_url_patterns, "cap": 0},
-    ],
-
-    # ── Proxy Avoidance ────────────────────────────────────────────────────────
-    "proxy-avoidance": [
-        {"type": "domains", "label": "HaGeZi — DoH bypass",         "url": f"{HGZ}/doh.txt",                     "parser": _parse_plain,        "cap": 0},
-        {"type": "domains", "label": "UT1 — DoH",                   "url": f"{UT1}/doh/domains",                 "parser": _parse_plain,        "cap": 0},
-        {"type": "domains", "label": "UT1 — VPN",                   "url": f"{UT1}/vpn/domains",                 "parser": _parse_plain,        "cap": 0},
     ],
 
     # ── Personals / Dating ────────────────────────────────────────────────────
@@ -285,9 +274,10 @@ def sync_category(name: str, sources: list[dict]):
         else:
             domains.extend(items)
 
+    has_domain_sources = any(src.get("type", "domains") == "domains" for src in sources)
     if domains:
         overwrite(name, "domains.txt", domains)
-    else:
+    elif has_domain_sources:
         print(f"    WARNING: all domain sources failed for [{name}] — domains.txt unchanged")
     if urls:
         merge_into(name, "urls.txt", urls)
@@ -313,7 +303,7 @@ def main():
         print("\nRebuilding default-level database …")
         build_script = os.path.join(BASE_DIR, "build.py")
         subprocess.run([sys.executable, build_script, "--level", "default"], check=True)
-        print("Done. Re-run 'go build' in mac/app/ to embed the updated lists.")
+        print("Done. Re-run 'go build' in mac/app/ and windows/app/ to embed the updated lists.")
     else:
         print("\nSkipped build. Run: python3 lists/build.py --level default")
 

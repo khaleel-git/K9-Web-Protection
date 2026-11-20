@@ -1,3 +1,16 @@
+## Lists update: BlockerFlow pornography and proxy lists
+
+**Windows:** your filter level now blocks every category it lists (before, only Custom with adult blocking used the built-in domain database). Pornography and web-proxy lists now come from BlockerFlow's tested lists. The proxy-avoidance category no longer includes DNS-over-HTTPS resolvers and VPN hosts.
+
+- The pornography list grew to about 894,000 domains and the proxy list to about 19,000. Mac and Windows now embed the same database.
+- Page keywords: Mac is unchanged. Windows went from 10,527 to 11,418 page keywords, and both apps now share the same 11,418.
+- The Reddit, Twitter and 4chan URL entries that were Windows-only now apply on Mac too.
+- On Windows, about 5,900 domains that only the old Windows list had are no longer in the built-in database. They only applied on Custom with adult blocking on. Most such sites are covered by the much larger new pornography list.
+- Pornography and proxy entries are embedded exactly as BlockerFlow ships them, so a `www.` entry such as `www.b-cdn.net` blocks only that host and not every subdomain of the bare domain.
+- The lists come from a pinned, signed version of [blockerflow-lists](https://github.com/khaleel-git/blockerflow-lists).
+
+---
+
 # K9 Web Protection v2.0: Windows & macOS
 
 > *Inspired by the original K9 Web Protection. Free, open-source, built for the community.*

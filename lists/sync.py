@@ -6,7 +6,6 @@ Fetches the latest data from actively maintained upstream sources:
   - Block List Project   (github.com/blocklistproject/Lists)
   - HaGeZi              (github.com/hagezi/dns-blocklists)
   - UT1 blacklists       (github.com/olbat/ut1-blacklists)
-  - URLhaus              (urlhaus.abuse.ch)
 
 Pornography and proxy-avoidance domains are not fetched here; they come from
 lists/fetch_blockerflow.py.
@@ -139,9 +138,9 @@ def overwrite(category: str, filename: str, items: list[str]):
 # ── source definitions ─────────────────────────────────────────────────────────
 
 BLP  = "https://raw.githubusercontent.com/blocklistproject/Lists/main"
-HGZ  = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains"
+# HaGeZi moved its domain lists from domains/ to wildcard/ (domains/tif.txt now 404s).
+HGZ  = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard"
 UT1  = "https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists"
-URLH = "https://urlhaus.abuse.ch/downloads/hostfile"
 
 SOURCES: dict[str, list[dict]] = {
 
@@ -154,8 +153,8 @@ SOURCES: dict[str, list[dict]] = {
     # ── Malware / Spyware ──────────────────────────────────────────────────────
     "malware-spyware": [
         {"type": "domains", "label": "Block List Project — malware", "url": f"{BLP}/malware.txt",                  "parser": _parse_hosts,        "cap": 50_000},
-        {"type": "domains", "label": "URLhaus — hostfile",           "url": URLH,                                  "parser": _parse_hosts,        "cap": 0},
-        {"type": "domains", "label": "HaGeZi — Threat Intel Feeds", "url": f"{HGZ}/tif.txt",                      "parser": _parse_plain,        "cap": 50_000},
+        # URLhaus was dropped: since October 2026 abuse.ch answers 410 Gone without an Auth-Key.
+        {"type": "domains", "label": "HaGeZi — Threat Intel Feeds", "url": f"{HGZ}/tif-onlydomains.txt",        "parser": _parse_plain,        "cap": 50_000},
     ],
 
     # ── Phishing ───────────────────────────────────────────────────────────────

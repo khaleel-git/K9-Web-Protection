@@ -82,9 +82,10 @@ never overwrites them).
 | Source | Notes | Domains |
 |--------|-------|---------|
 | [Block List Project, malware](https://github.com/blocklistproject/Lists) | Community maintained | 435k |
-| [URLhaus](https://urlhaus.abuse.ch) | abuse.ch, active malware URLs | ~500 |
-| [HaGeZi TIF](https://github.com/hagezi/dns-blocklists) | Threat Intelligence Feeds, 6h updates | 1.2M |
-| **Embedded (capped at 30k)** | | **30k** |
+| [HaGeZi TIF](https://github.com/hagezi/dns-blocklists) | Threat Intelligence Feeds (`wildcard/tif-onlydomains.txt`), updated several times a day | 1.2M |
+| **Embedded (capped at 50k)** | | **50k** |
+
+URLhaus was dropped in November 2026: abuse.ch now answers 410 Gone to downloads made without an Auth-Key.
 
 ### Phishing: `categories/phishing/`
 | Source | Notes | Domains |
@@ -93,7 +94,7 @@ never overwrites them).
 | [Block List Project, abuse](https://github.com/blocklistproject/Lists) | | 25k |
 | [Block List Project, scam](https://github.com/blocklistproject/Lists) | | 1.3k |
 | [UT1, phishing](https://github.com/olbat/ut1-blacklists) | | 688k |
-| **Embedded (capped at 30k)** | | **30k** |
+| **Embedded (capped at 50k)** | | **50k** |
 
 ### Gambling: `categories/gambling/`
 | Source | Notes | Domains |
@@ -101,7 +102,7 @@ never overwrites them).
 | [Block List Project, gambling](https://github.com/blocklistproject/Lists) | | 2.5k |
 | [UT1, gambling](https://github.com/olbat/ut1-blacklists) | | 32k |
 | [UT1, arjel](https://github.com/olbat/ut1-blacklists) | French gambling regulator list | 69 |
-| **Embedded (capped at 20k)** | | **20k** |
+| **Embedded (no cap)** | | **all** |
 
 ### Proxy Avoidance: `categories/proxy-avoidance/`
 Comes from BlockerFlow's public web-proxy list (about 19k domains). It no longer includes
@@ -217,7 +218,6 @@ UT1 URLs for `phishing/` and `hacking/`.
 | StevenBlack/hosts | MIT | https://github.com/StevenBlack/hosts |
 | OISD | GPL-3.0 | https://oisd.nl |
 | HaGeZi DNS Blocklists | GPL-3.0 | https://github.com/hagezi/dns-blocklists |
-| URLhaus |, | https://urlhaus.abuse.ch |
 | UT1 Blacklists | CC-BY-SA 4.0 | https://github.com/olbat/ut1-blacklists |
 | BlockerFlow lists: pornography | GPL-3.0 | https://github.com/khaleel-git/blockerflow-lists |
 | BlockerFlow lists: web-proxy (proxy-avoidance) | CC BY-SA 4.0 | https://github.com/khaleel-git/blockerflow-lists |

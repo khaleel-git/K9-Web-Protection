@@ -63,7 +63,7 @@ KEEP_AS_SHIPPED = {"pornography", "proxy-avoidance"}
 # pornography and proxy-avoidance come from lists/fetch_blockerflow.py; the rest
 # from sync.py.
 CATEGORY_CAPS: dict[str, int] = {
-    "pornography":                  0,  # no cap — full BlockerFlow list (~880k) for maximum coverage
+    "pornography":                  0,  # no cap — full BlockerFlow list (~894k) for maximum coverage
     "malware-spyware":         50_000,
     "phishing":                50_000,
     "gambling":                     0,  # no cap — 34k, small enough

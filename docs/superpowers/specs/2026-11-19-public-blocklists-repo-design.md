@@ -165,7 +165,8 @@ installers (`.pkg`, Windows setup) is not part of this work.
 A new script in `lists/` (name is the builder's call) does, in order:
 
 1. Reads the pinned version from a file in `lists/` (for example `lists/blockerflow-lists.version`).
-   A `--latest` flag looks up the newest tag in the public repo and rewrites the pin.
+   A `--latest` flag reads and verifies the signed `manifest.json` on the public repo's `main`
+   (the current stable, which respects rollbacks) and rewrites the pin to its version.
 2. Downloads that tag's `manifest.json` and files from the public repo.
 3. Verifies the manifest signature with BlockerFlow's public key (copied into the K9 repo),
    and each file's sha256 against the manifest. Any mismatch stops the script with nothing

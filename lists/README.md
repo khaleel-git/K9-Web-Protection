@@ -73,8 +73,8 @@ database, and the Windows filter level blocks every category its level lists.
 ### Pornography: `categories/pornography/`
 Comes from BlockerFlow's public lists, not from K9's own syncing. See
 [BlockerFlow lists: pornography and proxy-avoidance](#blockerflow-lists-pornography-and-proxy-avoidance).
-About 894k domains in the pinned source file, about 880k embedded after `build.py` normalises them
-(strips `www.`, dedupes); exact totals come from `python3 lists/build.py --stats`. `sync.py` still
+About 894k domains, embedded exactly as BlockerFlow ships them (`build.py` keeps their `www.`
+entries); exact totals come from `python3 lists/build.py --stats`. `sync.py` still
 merges UT1 adult URLs and keywords into `pornography/urls.txt` and `keywords.txt` (merge only, it
 never overwrites them).
 
